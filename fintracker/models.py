@@ -325,6 +325,82 @@ def get_import_batches(db, limit=10):
 # Settings / recalculate
 # ---------------------------------------------------------------------------
 
+def get_checklist(db, plan_id=1):
+    rows = db.execute(
+        "SELECT * FROM plan_checklist WHERE plan_id = ? ORDER BY sort_order, id",
+        (plan_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def toggle_checklist_item(db, item_id, is_done):
+    done_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S") if is_done else None
+    db.execute(
+        "UPDATE plan_checklist SET is_done = ?, done_at = ? WHERE id = ?",
+        (1 if is_done else 0, done_at, item_id),
+    )
+    db.commit()
+
+
+def get_spending_by_period(db, plan_id=1):
+    """Calculate actual spending per pay period (between paycheck dates)."""
+    paychecks = db.execute(
+        "SELECT id, pay_date FROM planned_paychecks WHERE plan_id = ? ORDER BY pay_date",
+        (plan_id,),
+    ).fetchall()
+    plan = get_plan(db, plan_id)
+    if not plan or not paychecks:
+        return []
+
+    periods = []
+    for i, pc in enumerate(paychecks):
+        start = pc["pay_date"]
+        if i + 1 < len(paychecks):
+            end = paychecks[i + 1]["pay_date"]
+        else:
+            end = plan["end_date"]
+
+        actual = db.execute(
+            """SELECT COALESCE(SUM(amount), 0)
+               FROM transactions
+               WHERE date >= ? AND date < ? AND excluded = 'false'
+                     AND type = 'regular' AND amount > 0""",
+            (start, end),
+        ).fetchone()[0]
+
+        tx_count = db.execute(
+            """SELECT COUNT(*)
+               FROM transactions
+               WHERE date >= ? AND date < ? AND excluded = 'false'
+                     AND type = 'regular' AND amount > 0""",
+            (start, end),
+        ).fetchone()[0]
+
+        flagged_count = db.execute(
+            "SELECT COUNT(*) FROM transactions WHERE date >= ? AND date < ? AND flagged = 1",
+            (start, end),
+        ).fetchone()[0]
+
+        budget = plan["alloc_spending"]
+        start_dt = datetime.strptime(start, "%Y-%m-%d")
+        end_dt = datetime.strptime(end, "%Y-%m-%d")
+        days = (end_dt - start_dt).days or 1
+        periods.append({
+            "paycheck_id": pc["id"],
+            "start": start,
+            "end": end,
+            "days": days,
+            "budget": budget,
+            "actual": actual,
+            "delta": budget - actual,
+            "pct_used": round(actual / budget * 100) if budget else 0,
+            "tx_count": tx_count,
+            "flagged_count": flagged_count,
+        })
+
+    return periods
+
+
 def update_plan(db, plan_id, **kwargs):
     allowed = {
         "alloc_rent", "alloc_efund", "alloc_roth_ira", "alloc_spending",

@@ -1,6 +1,11 @@
 """Budget vs actual comparison engine and plan scorecard."""
 
-from models import get_plan, get_fixed_costs, get_planned_paychecks, get_monthly_summary, get_rent_waterfall
+from datetime import datetime, timedelta
+
+from models import (
+    get_plan, get_fixed_costs, get_planned_paychecks, get_monthly_summary,
+    get_rent_waterfall, get_checklist, get_spending_by_period,
+)
 
 
 def monthly_scorecard(db, year, month, plan_id=1):
@@ -80,7 +85,7 @@ def plan_scorecard(db, plan_id=1):
     confirmed_roth = sum(1 for p in logged if p.get("roth_done"))
 
     # E-fund running total (starting balance + confirmed deposits)
-    efund_start = 6595  # post-CC-payoff liquid reserves
+    efund_start = 9561  # post-CC-payoff liquid reserves
     efund_deposits = sum(
         p["alloc_efund"] for p in logged if p.get("efund_done")
     )
@@ -114,6 +119,81 @@ def plan_scorecard(db, plan_id=1):
         "roth_target": roth_target,
         "roth_pct": round(roth_deposits / roth_target * 100) if roth_target else 0,
         "waterfall": waterfall,
+    }
+
+
+def tracker_summary(db, plan_id=1):
+    """Build the full tracker view: timeline, checklist, spending periods, next actions."""
+    plan = get_plan(db, plan_id)
+    if not plan:
+        return None
+
+    today = datetime.now()
+    start = datetime.strptime(plan["start_date"], "%Y-%m-%d")
+    end = datetime.strptime(plan["end_date"], "%Y-%m-%d")
+    total_days = (end - start).days
+    elapsed_days = max(0, min((today - start).days, total_days))
+    days_remaining = max(0, total_days - elapsed_days)
+    pct_elapsed = round(elapsed_days / total_days * 100) if total_days else 0
+
+    paychecks = get_planned_paychecks(db, plan_id)
+    scorecard = plan_scorecard(db, plan_id)
+    checklist = get_checklist(db, plan_id)
+    spending_periods = get_spending_by_period(db, plan_id)
+
+    # Group checklist by phase
+    phases = {}
+    for item in checklist:
+        phase = item["phase"]
+        if phase not in phases:
+            phases[phase] = {"name": phase, "checklist_items": [], "done": 0, "total": 0}
+        phases[phase]["checklist_items"].append(item)
+        phases[phase]["total"] += 1
+        if item["is_done"]:
+            phases[phase]["done"] += 1
+
+    checklist_total = len(checklist)
+    checklist_done = sum(1 for c in checklist if c["is_done"])
+
+    # Current spending period
+    current_period = None
+    for sp in spending_periods:
+        if sp["start"] <= today.strftime("%Y-%m-%d") < sp["end"]:
+            current_period = sp
+            break
+    if not current_period and spending_periods:
+        if today.strftime("%Y-%m-%d") >= spending_periods[-1]["start"]:
+            current_period = spending_periods[-1]
+
+    # Next upcoming paycheck
+    next_paycheck = None
+    for pc in paychecks:
+        if pc["pay_date"] >= today.strftime("%Y-%m-%d") and not pc.get("actual_id"):
+            next_paycheck = pc
+            break
+
+    # Upcoming checklist items (not done, with due dates, sorted by due date)
+    upcoming_items = sorted(
+        [c for c in checklist if not c["is_done"] and c["due_date"]],
+        key=lambda c: c["due_date"],
+    )[:5]
+
+    return {
+        "plan": plan,
+        "today": today.strftime("%Y-%m-%d"),
+        "total_days": total_days,
+        "elapsed_days": elapsed_days,
+        "days_remaining": days_remaining,
+        "pct_elapsed": pct_elapsed,
+        "scorecard": scorecard,
+        "phases": list(phases.values()),
+        "checklist_total": checklist_total,
+        "checklist_done": checklist_done,
+        "checklist_pct": round(checklist_done / checklist_total * 100) if checklist_total else 0,
+        "spending_periods": spending_periods,
+        "current_period": current_period,
+        "next_paycheck": next_paycheck,
+        "upcoming_items": upcoming_items,
     }
 
 

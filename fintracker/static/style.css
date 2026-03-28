@@ -162,3 +162,168 @@ figure table {
 figure table td, figure table th {
     padding: 0.4rem 0.6rem;
 }
+
+/* --- Tracker styles --- */
+
+/* Timeline bar */
+.timeline-bar {
+    position: relative;
+    height: 12px;
+    background: #e9ecef;
+    border-radius: 6px;
+    overflow: visible;
+    margin: 1rem 0 0.5rem;
+}
+.timeline-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2e7d32, #43a047);
+    border-radius: 6px 0 0 6px;
+    transition: width 0.5s ease;
+}
+.timeline-marker {
+    position: absolute;
+    top: -4px;
+    width: 4px;
+    height: 20px;
+    background: #1a1a1a;
+    border-radius: 2px;
+    transform: translateX(-50%);
+}
+.timeline-label {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    color: #1a1a1a;
+}
+
+/* Spending meter */
+.spending-meter {
+    position: relative;
+    height: 36px;
+    background: #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.spending-meter-fill {
+    height: 100%;
+    border-radius: 6px 0 0 6px;
+    transition: width 0.5s ease;
+}
+.spending-meter-fill.under {
+    background: linear-gradient(90deg, #43a047, #66bb6a);
+}
+.spending-meter-fill.over {
+    background: linear-gradient(90deg, #e53935, #ef5350);
+}
+.spending-meter-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    white-space: nowrap;
+    text-shadow: 0 0 4px rgba(255,255,255,0.8);
+}
+
+.over { color: var(--pico-color-red-550); }
+.under { color: var(--pico-color-green-550); }
+
+/* Interactive checklist */
+.checklist-interactive {
+    list-style: none;
+    margin: 0.5rem 0 1rem;
+    padding: 0;
+}
+.checklist-interactive li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9rem;
+}
+.checklist-interactive li.done .checklist-text {
+    text-decoration: line-through;
+    color: #888;
+}
+.checklist-interactive li.overdue {
+    background: #fff3e0;
+    padding-left: 0.5rem;
+    margin: 0 -0.5rem;
+    border-radius: 4px;
+}
+.checklist-form {
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+}
+.checklist-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin: 0;
+    border: 2px solid #999;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.checklist-btn.checked {
+    background: #2e7d32;
+    border-color: #2e7d32;
+    color: #fff;
+}
+.checklist-text {
+    flex: 1;
+}
+.checklist-due {
+    font-size: 0.75rem;
+    color: #666;
+    flex-shrink: 0;
+}
+.checklist-due.overdue {
+    color: #c62828;
+    font-weight: 700;
+    background: transparent;
+}
+.checklist-completed {
+    font-size: 0.7rem;
+    color: #2e7d32;
+    flex-shrink: 0;
+}
+
+/* Badge variants for tracker */
+.badge-over {
+    background: #fce4ec;
+    color: #c62828;
+}
+.badge-warning {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+/* Details/summary for checklist phases */
+details {
+    margin-bottom: 0.5rem;
+}
+details summary {
+    cursor: pointer;
+    padding: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+details summary .badge {
+    margin-left: auto;
+}

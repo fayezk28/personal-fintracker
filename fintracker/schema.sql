@@ -116,3 +116,15 @@ CREATE TABLE IF NOT EXISTS flag_rules (
     flag_reason TEXT NOT NULL,
     is_active INTEGER DEFAULT 1
 );
+
+CREATE TABLE IF NOT EXISTS plan_checklist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_id INTEGER NOT NULL REFERENCES plan_periods(id),
+    phase TEXT NOT NULL,
+    item TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0,
+    is_done INTEGER DEFAULT 0,
+    done_at TEXT,
+    due_date TEXT,
+    notes TEXT
+);

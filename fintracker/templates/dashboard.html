@@ -4,6 +4,43 @@
 {% block content %}
 <h1>Dashboard</h1>
 
+{% if tracker %}
+<!-- Plan Timeline -->
+<section>
+    <div class="timeline-bar">
+        <div class="timeline-fill" style="width: {{ tracker.pct_elapsed }}%"></div>
+        <div class="timeline-marker" style="left: {{ tracker.pct_elapsed }}%">
+            <span class="timeline-label">Day {{ tracker.elapsed_days }}</span>
+        </div>
+    </div>
+    <p style="text-align:center; margin-top:0.5rem;">
+        <small><strong>{{ tracker.days_remaining }} days remaining</strong> &middot; {{ tracker.plan.start_date }} → {{ tracker.plan.end_date }}</small>
+    </p>
+</section>
+
+{% if tracker.current_period %}
+<!-- Current Spending -->
+<section>
+    <h2>Spending This Period</h2>
+    <article>
+        <div class="spending-meter">
+            <div class="spending-meter-fill {{ 'over' if tracker.current_period.delta < 0 else 'under' }}"
+                 style="width: {{ [tracker.current_period.pct_used, 100]|min }}%">
+            </div>
+            <div class="spending-meter-label">
+                ${{ "{:,.0f}".format(tracker.current_period.actual) }} / ${{ "{:,.0f}".format(tracker.current_period.budget) }}
+                {% if tracker.current_period.delta >= 0 %}
+                    — ${{ "{:,.0f}".format(tracker.current_period.delta) }} left
+                {% else %}
+                    — ${{ "{:,.0f}".format(-tracker.current_period.delta) }} OVER
+                {% endif %}
+            </div>
+        </div>
+    </article>
+</section>
+{% endif %}
+{% endif %}
+
 {% if scorecard %}
 <!-- Plan Progress -->
 <section>

@@ -65,12 +65,14 @@ def dashboard():
     monthly = budget_engine.monthly_scorecard(db, today.year, today.month)
     flagged = models.get_flagged_transactions(db, limit=10)
     waterfall = models.get_rent_waterfall(db)
+    tracker = budget_engine.tracker_summary(db)
     return render_template(
         "dashboard.html",
         scorecard=scorecard,
         monthly=monthly,
         flagged=flagged,
         waterfall=waterfall,
+        tracker=tracker,
         now=today,
     )
 
@@ -80,6 +82,28 @@ def dashboard_data():
     db = get_db()
     data = budget_engine.dashboard_chart_data(db)
     return jsonify(data)
+
+
+# ---------------------------------------------------------------------------
+# Routes — Tracker
+# ---------------------------------------------------------------------------
+
+@app.route("/tracker")
+def tracker():
+    db = get_db()
+    data = budget_engine.tracker_summary(db)
+    return render_template("tracker.html", t=data)
+
+
+@app.route("/tracker/checklist", methods=["POST"])
+def toggle_checklist():
+    db = get_db()
+    item_id = int(request.form["item_id"])
+    is_done = request.form.get("is_done") == "1"
+    models.toggle_checklist_item(db, item_id, is_done)
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({"ok": True})
+    return redirect(url_for("tracker"))
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +150,7 @@ def scorecard():
         })
 
     # Build running totals
-    efund_start = 6595
+    efund_start = 9561
     running = [{"idx": "—", "date": "Apr 1 (start)", "added": None, "efund": efund_start, "roth": 0}]
     cumulative_efund = efund_start
     cumulative_roth = 0
@@ -291,5 +315,5 @@ if __name__ == "__main__":
         # Ensure schema is up to date
         init_db()
 
-    print("Starting FinTracker at http://localhost:5000")
-    app.run(debug=True, port=5000)
+    print("Starting FinTracker at http://localhost:5050")
+    app.run(debug=True, port=5050)

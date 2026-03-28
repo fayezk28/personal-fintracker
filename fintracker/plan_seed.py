@@ -53,7 +53,7 @@ def seed(db):
 
     # Debts
     debts = [
-        ("Car Loan", 13063.09, 5.94, 260.00, "2030-12-25", "active", None),
+        ("Car Loan", 12863.00, 5.94, 260.00, "2030-12-25", "active", None),
         (
             "Student Loan 1-01 (Subsidized)",
             3662.00,
@@ -61,7 +61,7 @@ def seed(db):
             0,
             "2040-07-25",
             "forbearance",
-            "SAVE plan forbearance through 10/31/2028",
+            "SAVE plan forbearance through 10/31/2028. Current balance w/ interest: $3,739.70",
         ),
         (
             "Student Loan 1-02 (Unsubsidized)",
@@ -70,7 +70,7 @@ def seed(db):
             0,
             "2040-07-25",
             "forbearance",
-            "SAVE plan forbearance through 10/31/2028",
+            "SAVE plan forbearance through 10/31/2028. Current balance w/ interest: $3,919.43",
         ),
     ]
     for name, balance, apr, min_pay, maturity, status, notes in debts:
@@ -172,6 +172,50 @@ def seed(db):
                (bank_category, bank_parent_category, plan_category)
                VALUES (?, ?, ?)""",
             (bank_cat, parent_cat, plan_cat),
+        )
+
+    # Checklist items from the 90-day plan
+    checklist = [
+        # Phase 1: April 1 — Before the First Paycheck
+        ("April 1 — Day One", "Pay off all $7,220 in CC debt from Individual Cash Account", 1, "2026-04-01"),
+        ("April 1 — Day One", "April rent paid from Checking account ($3,250 already there)", 2, "2026-04-01"),
+        ("April 1 — Day One", "Contact student loan servicer — confirm forbearance active, request refund of Jan 1 payment ($475.58)", 3, "2026-04-07"),
+        ("April 1 — Day One", "Cancel any student loan autopay immediately", 4, "2026-04-01"),
+        ("April 1 — Day One", "Before April 15: Put remaining $3,780 into Roth IRA as 2025 contribution", 5, "2026-04-15"),
+
+        # Phase 2: April setup
+        ("April — Setup", "Verify Apr 17 paycheck reflects the raise", 10, "2026-04-17"),
+        ("April — Setup", "Set up $1,550 auto-transfer to Checking each payday for rent funding", 11, "2026-04-03"),
+        ("April — Setup", "Set up automatic $269/paycheck to Roth IRA", 12, "2026-04-03"),
+        ("April — Setup", "Pull March pay stubs — identify what caused $1,329/$1,346 amounts", 13, "2026-04-07"),
+
+        # Phase 3: Ongoing habits
+        ("Ongoing — Every Paycheck", "Transfer $1,550 to Checking (rent account) on payday", 20, None),
+        ("Ongoing — Every Paycheck", "Move $475 (or $400 for Apr 3) to emergency fund", 21, None),
+        ("Ongoing — Every Paycheck", "Contribute $269 to Roth IRA", 22, None),
+        ("Ongoing — Every Paycheck", "$400 spending — that's your ceiling", 23, None),
+        ("Ongoing — Every Paycheck", "Sweep unspent buffer to E-Fund every Sunday", 24, None),
+
+        # Phase 4: Monthly checks
+        ("Monthly Checks", "Pay every CC statement in full — no exceptions", 30, None),
+        ("Monthly Checks", "Weekly 10-min Sunday spending check — scan transactions", 31, None),
+        ("Monthly Checks", "Hard cap on gambling: $50/month or $0", 32, None),
+        ("Monthly Checks", "Confirm W-4 withholding is accurate on new salary", 33, "2026-05-15"),
+
+        # Phase 5: May bonus month
+        ("May — Bonus Month", "May 29 bonus paycheck — full buffer redirected to E-Fund", 40, "2026-05-29"),
+        ("May — Bonus Month", "3rd paycheck rent allocation ($1,550) pre-funds July", 41, "2026-05-29"),
+
+        # Phase 6: June — End of Plan
+        ("June — End of Plan", "Evaluate increasing Roth 401K from 4% to 6%", 50, "2026-06-30"),
+        ("June — End of Plan", "Set next 90-day targets", 51, "2026-06-30"),
+    ]
+    for phase, item, sort_order, due_date in checklist:
+        db.execute(
+            """INSERT INTO plan_checklist
+               (plan_id, phase, item, sort_order, due_date)
+               VALUES (?, ?, ?, ?, ?)""",
+            (plan_id, phase, item, sort_order, due_date),
         )
 
     db.commit()

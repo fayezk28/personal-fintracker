@@ -15,6 +15,7 @@
         </ul>
         <ul>
             <li><a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+            <li><a href="{{ url_for('tracker') }}" {% if request.endpoint == 'tracker' %}class="active"{% endif %}>Tracker</a></li>
             <li><a href="{{ url_for('scorecard') }}" {% if request.endpoint == 'scorecard' %}class="active"{% endif %}>90-Day Plan</a></li>
             <li><a href="{{ url_for('paychecks') }}" {% if request.endpoint == 'paychecks' %}class="active"{% endif %}>Paychecks</a></li>
             <li><a href="{{ url_for('transactions') }}" {% if request.endpoint == 'transactions' %}class="active"{% endif %}>Transactions</a></li>

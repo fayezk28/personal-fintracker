@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}Tracker — FinTracker{% endblock %}
+
+{% block content %}
+<h1>Plan Tracker</h1>
+
+{% if t %}
+<!-- Timeline Bar -->
+<section>
+    <h2>90-Day Timeline</h2>
+    <div class="timeline-bar">
+        <div class="timeline-fill" style="width: {{ t.pct_elapsed }}%"></div>
+        <div class="timeline-marker" style="left: {{ t.pct_elapsed }}%">
+            <span class="timeline-label">Today</span>
+        </div>
+    </div>
+    <div class="grid">
+        <article>
+            <header>Day</header>
+            <p class="big-number">{{ t.elapsed_days }} / {{ t.total_days }}</p>
+            <small>{{ t.plan.start_date }} → {{ t.plan.end_date }}</small>
+        </article>
+        <article>
+            <header>Days Remaining</header>
+            <p class="big-number">{{ t.days_remaining }}</p>
+            <small>{{ t.pct_elapsed }}% elapsed</small>
+        </article>
+        <article>
+            <header>Paychecks</header>
+            <p class="big-number">{{ t.scorecard.logged_paychecks }} / {{ t.scorecard.total_paychecks }}</p>
+            <progress value="{{ t.scorecard.logged_paychecks }}" max="{{ t.scorecard.total_paychecks }}"></progress>
+            <small>{{ t.scorecard.pct_complete }}% logged</small>
+        </article>
+        <article>
+            <header>Checklist</header>
+            <p class="big-number">{{ t.checklist_done }} / {{ t.checklist_total }}</p>
+            <progress value="{{ t.checklist_done }}" max="{{ t.checklist_total }}"></progress>
+            <small>{{ t.checklist_pct }}% complete</small>
+        </article>
+    </div>
+</section>
+
+<!-- Current Spending Period -->
+{% if t.current_period %}
+<section>
+    <h2>Current Spending Period</h2>
+    <article>
+        <header>{{ t.current_period.start }} → {{ t.current_period.end }}</header>
+        <div class="spending-meter">
+            <div class="spending-meter-fill {{ 'over' if t.current_period.delta < 0 else 'under' }}"
+                 style="width: {{ [t.current_period.pct_used, 100]|min }}%">
+            </div>
+            <div class="spending-meter-label">
+                ${{ "{:,.0f}".format(t.current_period.actual) }} / ${{ "{:,.0f}".format(t.current_period.budget) }}
+            </div>
+        </div>
+        <div class="grid" style="margin-top: 1rem;">
+            <div>
+                <strong>${{ "{:,.0f}".format(t.current_period.actual) }}</strong> spent
+                <br><small>{{ t.current_period.tx_count }} transactions</small>
+            </div>
+            <div>
+                <strong>${{ "{:,.0f}".format(t.current_period.budget) }}</strong> budget
+                <br><small>${{ "{:,.0f}".format(t.current_period.budget / t.current_period.days) }}/day target</small>
+            </div>
+            <div>
+                {% if t.current_period.delta >= 0 %}
+                <strong class="under">${{ "{:,.0f}".format(t.current_period.delta) }}</strong> remaining
+                {% else %}
+                <strong class="over">${{ "{:,.0f}".format(-t.current_period.delta) }}</strong> over budget
+                {% endif %}
+                <br><small>{{ t.current_period.pct_used }}% used</small>
+            </div>
+        </div>
+        {% if t.current_period.flagged_count > 0 %}
+        <div class="callout callout-red" style="margin-top: 0.75rem;">
+            <strong>{{ t.current_period.flagged_count }}</strong> flagged transaction{{ 's' if t.current_period.flagged_count > 1 else '' }} this period.
+        </div>
+        {% endif %}
+    </article>
+</section>
+{% endif %}
+
+<!-- All Spending Periods -->
+<section>
+    <h2>Spending by Pay Period</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th style="text-align:right">Budget</th>
+                    <th style="text-align:right">Actual</th>
+                    <th style="text-align:right">Remaining</th>
+                    <th style="text-align:right">Used</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sp in t.spending_periods %}
+                <tr class="{{ 'warning-row' if sp.delta < 0 else '' }}{{ ' logged-row' if sp.delta >= 0 and sp.actual > 0 else '' }}">
+                    <td>{{ sp.start }} → {{ sp.end }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(sp.budget) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(sp.actual) }}</td>
+                    <td style="text-align:right">
+                        {% if sp.delta >= 0 %}
+                        ${{ "{:,.0f}".format(sp.delta) }}
+                        {% else %}
+                        <strong class="over">-${{ "{:,.0f}".format(-sp.delta) }}</strong>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right">{{ sp.pct_used }}%</td>
+                    <td>
+                        {% if sp.pct_used == 0 %}
+                        <span class="badge badge-pending">Upcoming</span>
+                        {% elif sp.delta < 0 %}
+                        <span class="badge badge-over">Over</span>
+                        {% elif sp.pct_used <= 80 %}
+                        <span class="badge badge-success">On Track</span>
+                        {% else %}
+                        <span class="badge badge-warning">Watch</span>
+                        {% endif %}
+                        {% if sp.flagged_count > 0 %}
+                        <span class="badge badge-over">{{ sp.flagged_count }} flagged</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+    <div class="callout">
+        <strong>The rule:</strong> $400/paycheck is the spending ceiling. ~$29/day. Cook more, subway over Lyft, limit delivery orders.
+    </div>
+</section>
+
+<!-- Savings Progress -->
+<section>
+    <h2>Savings Progress</h2>
+    <div class="grid">
+        <article>
+            <header>Emergency Fund</header>
+            <p class="big-number under">${{ "{:,.0f}".format(t.scorecard.efund_current) }}</p>
+            <progress value="{{ t.scorecard.efund_current - t.scorecard.efund_start }}" max="{{ t.scorecard.total_efund_planned }}"></progress>
+            <small>
+                ${{ "{:,.0f}".format(t.scorecard.efund_current) }} / ${{ "{:,.0f}".format(t.scorecard.efund_target) }} target
+                &middot; {{ t.scorecard.efund_pct }}% of 90-day goal
+            </small>
+        </article>
+        <article>
+            <header>Roth IRA (2026)</header>
+            <p class="big-number under">${{ "{:,.0f}".format(t.scorecard.roth_deposits) }}</p>
+            <progress value="{{ t.scorecard.roth_deposits }}" max="{{ t.scorecard.roth_target }}"></progress>
+            <small>
+                ${{ "{:,.0f}".format(t.scorecard.roth_deposits) }} / ${{ "{:,.0f}".format(t.scorecard.roth_target) }} target
+                &middot; {{ t.scorecard.roth_pct }}% of 90-day goal
+            </small>
+        </article>
+    </div>
+</section>
+
+<!-- Upcoming Actions -->
+{% if t.upcoming_items %}
+<section>
+    <h2>Next Actions</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Due</th><th>Action</th><th>Phase</th></tr>
+            </thead>
+            <tbody>
+                {% for item in t.upcoming_items %}
+                <tr class="{{ 'warning-row' if item.due_date and item.due_date < t.today else '' }}">
+                    <td>{{ item.due_date or "Ongoing" }}</td>
+                    <td>{{ item.item }}</td>
+                    <td><small>{{ item.phase }}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+</section>
+{% endif %}
+
+<!-- Next Paycheck -->
+{% if t.next_paycheck %}
+<section>
+    <h2>Next Paycheck</h2>
+    <article>
+        <header>{{ t.next_paycheck.pay_date }}{{ ' — Bonus 3rd Paycheck' if t.next_paycheck.is_bonus_check else '' }}</header>
+        <div class="grid">
+            <div><strong>Net Pay:</strong> ${{ "{:,.2f}".format(t.next_paycheck.net_amount) }}</div>
+            <div><strong>Rent:</strong> ${{ "{:,.0f}".format(t.next_paycheck.alloc_rent) }}</div>
+            <div><strong>E-Fund:</strong> ${{ "{:,.0f}".format(t.next_paycheck.alloc_efund) }}</div>
+            <div><strong>Roth IRA:</strong> ${{ "{:,.0f}".format(t.next_paycheck.alloc_roth_ira) }}</div>
+            <div><strong>Spending:</strong> ${{ "{:,.0f}".format(t.next_paycheck.alloc_spending) }}</div>
+            <div><strong>Buffer:</strong> ${{ "{:,.0f}".format(t.next_paycheck.alloc_buffer) }}</div>
+        </div>
+        <p style="margin-top: 0.75rem;">
+            <a href="{{ url_for('paychecks') }}" role="button" class="outline">Log This Paycheck →</a>
+        </p>
+    </article>
+</section>
+{% endif %}
+
+<!-- Checklist -->
+<section>
+    <h2>Action Checklist — {{ t.checklist_done }}/{{ t.checklist_total }} complete</h2>
+    <progress value="{{ t.checklist_done }}" max="{{ t.checklist_total }}" style="margin-bottom: 1rem;"></progress>
+
+    {% for phase in t.phases %}
+    <details {{ 'open' if phase.done < phase.total else '' }}>
+        <summary>
+            <strong>{{ phase.name }}</strong>
+            <span class="badge {{ 'badge-success' if phase.done == phase.total else 'badge-pending' }}">
+                {{ phase.done }}/{{ phase.total }}
+            </span>
+        </summary>
+        <ul class="checklist-interactive">
+            {% for item in phase.checklist_items %}
+            <li class="{{ 'done' if item.is_done else '' }}{{ ' overdue' if not item.is_done and item.due_date and item.due_date < t.today else '' }}">
+                <form method="post" action="{{ url_for('toggle_checklist') }}" class="checklist-form">
+                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                    <input type="hidden" name="is_done" value="{{ '0' if item.is_done else '1' }}">
+                    <button type="submit" class="checklist-btn {{ 'checked' if item.is_done else '' }}">
+                        {{ '✓' if item.is_done else '' }}
+                    </button>
+                </form>
+                <span class="checklist-text">{{ item.item }}</span>
+                {% if item.due_date %}
+                <span class="checklist-due {{ 'overdue' if not item.is_done and item.due_date < t.today else '' }}">
+                    {{ item.due_date }}
+                </span>
+                {% endif %}
+                {% if item.done_at %}
+                <span class="checklist-completed">Done {{ item.done_at[:10] }}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endfor %}
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.checklist-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        }).then(r => r.json()).then(data => {
+            if (data.ok) location.reload();
+        });
+    });
+});
+</script>
+{% endblock %}
