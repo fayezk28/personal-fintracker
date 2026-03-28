@@ -1,0 +1,164 @@
+/* FinTracker — custom styles on top of Pico CSS */
+
+/* Nav active state */
+nav a.active {
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+/* Big numbers in dashboard cards */
+.big-number {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+}
+.big-number.over {
+    color: var(--pico-color-red-550);
+}
+.big-number.under {
+    color: var(--pico-color-green-550);
+}
+
+/* Flash messages */
+.flash {
+    padding: 0.75rem 1rem;
+    border-radius: var(--pico-border-radius);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+.flash-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+.flash-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Badge system for paycheck status */
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 3px;
+    background: #e0e0e0;
+    color: #333;
+    margin-right: 2px;
+}
+.badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+.badge-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* Row states */
+.bonus-row {
+    background: #fff8e1 !important;
+}
+.logged-row {
+    background: #e8f5e9 !important;
+}
+.warning-row {
+    background: #fce4ec !important;
+}
+
+/* Income amounts (negative = inflow) */
+.income-amount {
+    color: var(--pico-color-green-550);
+}
+
+/* Smaller button variant */
+.small-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* Log form row */
+.log-form-row td {
+    background: #f8f9fa;
+    padding: 1rem;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 2rem 0 1rem;
+    color: #888;
+}
+
+/* Chart container */
+#chart-container {
+    position: relative;
+    height: 350px;
+    margin-bottom: 1.5rem;
+}
+
+/* Progress bars in dashboard */
+progress {
+    width: 100%;
+    height: 8px;
+}
+
+/* Scorecard-specific styles */
+.total-row td {
+    font-weight: 700;
+    background: #f0f0f0 !important;
+    border-top: 2px solid #999;
+}
+.highlight-row {
+    background: #fff3e0 !important;
+}
+.action-row {
+    background: #e8f5e9 !important;
+}
+
+/* Callout boxes */
+.callout {
+    border-left: 4px solid #1a1a1a;
+    background: #f7f7f7;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+.callout-amber {
+    border-color: #e65100;
+    background: #fff3e0;
+}
+.callout-red {
+    border-color: #c62828;
+    background: #fce4ec;
+}
+
+/* Checklist */
+.checklist {
+    list-style: none;
+    margin: 0.5rem 0 1rem 0;
+    padding: 0;
+}
+.checklist li {
+    padding: 0.35rem 0 0.35rem 1.5rem;
+    position: relative;
+    font-size: 0.9rem;
+    border-bottom: 1px dotted #eee;
+}
+.checklist li:before {
+    content: "\2610";
+    position: absolute;
+    left: 0;
+    color: #555;
+}
+
+/* Compact tables */
+figure table {
+    font-size: 0.85rem;
+}
+figure table td, figure table th {
+    padding: 0.4rem 0.6rem;
+}

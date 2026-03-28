@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Paychecks — FinTracker{% endblock %}
+
+{% block content %}
+<h1>Paycheck Schedule</h1>
+
+{% if plan %}
+<p>Plan: {{ plan.name }} &middot; {{ plan.start_date }} to {{ plan.end_date }} &middot;
+    Old net: ${{ "{:,.2f}".format(plan.net_paycheck_old) }} &middot;
+    New net: ${{ "{:,.2f}".format(plan.net_paycheck_new) }}
+</p>
+{% endif %}
+
+<figure>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th style="text-align:right">Net Pay</th>
+                <th style="text-align:right">Rent</th>
+                <th style="text-align:right">Bills</th>
+                <th style="text-align:right">E-Fund</th>
+                <th style="text-align:right">Roth IRA</th>
+                <th style="text-align:right">Spending</th>
+                <th style="text-align:right">Buffer</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pc in paychecks %}
+            <tr class="{{ 'bonus-row' if pc.is_bonus_check else '' }} {{ 'logged-row' if pc.actual_id else '' }}">
+                <td>{{ loop.index }}{{ ' *' if pc.is_bonus_check else '' }}</td>
+                <td>{{ pc.pay_date }}</td>
+                <td style="text-align:right">${{ "{:,.2f}".format(pc.net_amount) }}</td>
+                <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_rent) }}</td>
+                <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_bills) }}</td>
+                <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_efund) }}</td>
+                <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_roth_ira) }}</td>
+                <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_spending) }}</td>
+                <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_buffer) }}</td>
+                <td>
+                    {% if pc.actual_id %}
+                        <span class="badge badge-success">Logged</span>
+                        {% if pc.rent_done %}<span class="badge">R</span>{% endif %}
+                        {% if pc.efund_done %}<span class="badge">E</span>{% endif %}
+                        {% if pc.roth_done %}<span class="badge">I</span>{% endif %}
+                        {% if pc.spending_done %}<span class="badge">S</span>{% endif %}
+                    {% else %}
+                        <span class="badge badge-pending">Pending</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="outline secondary small-btn" onclick="toggleForm({{ pc.id }})">
+                        {{ 'Edit' if pc.actual_id else 'Log' }}
+                    </button>
+                </td>
+            </tr>
+            <tr id="form-{{ pc.id }}" class="log-form-row" style="display:none;">
+                <td colspan="11">
+                    <form method="post" action="{{ url_for('log_paycheck') }}">
+                        <input type="hidden" name="planned_id" value="{{ pc.id }}">
+                        <div class="grid">
+                            <label>
+                                Received Date
+                                <input type="date" name="received_date"
+                                       value="{{ pc.received_date or pc.pay_date }}">
+                            </label>
+                            <label>
+                                Net Amount
+                                <input type="number" step="0.01" name="net_amount"
+                                       value="{{ pc.actual_net or pc.net_amount }}">
+                            </label>
+                        </div>
+                        <fieldset>
+                            <legend>Allocations Completed</legend>
+                            <label>
+                                <input type="checkbox" name="rent_done" {{ 'checked' if pc.rent_done else '' }}>
+                                Rent transferred (${{ "{:,.0f}".format(pc.alloc_rent) }})
+                            </label>
+                            <label>
+                                <input type="checkbox" name="efund_done" {{ 'checked' if pc.efund_done else '' }}>
+                                E-Fund moved (${{ "{:,.0f}".format(pc.alloc_efund) }})
+                            </label>
+                            <label>
+                                <input type="checkbox" name="roth_done" {{ 'checked' if pc.roth_done else '' }}>
+                                Roth IRA contributed (${{ "{:,.0f}".format(pc.alloc_roth_ira) }})
+                            </label>
+                            <label>
+                                <input type="checkbox" name="spending_done" {{ 'checked' if pc.spending_done else '' }}>
+                                Spending allocated (${{ "{:,.0f}".format(pc.alloc_spending) }})
+                            </label>
+                        </fieldset>
+                        <label>
+                            Notes
+                            <input type="text" name="notes" value="{{ pc.actual_notes or '' }}" placeholder="Optional notes...">
+                        </label>
+                        <button type="submit">Save</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</figure>
+
+<p><small>* = Bonus 3rd paycheck (May). R=Rent, E=E-Fund, I=Roth IRA, S=Spending.</small></p>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleForm(id) {
+    const row = document.getElementById('form-' + id);
+    row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+</script>
+{% endblock %}

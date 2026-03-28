@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Transactions — FinTracker{% endblock %}
+
+{% block content %}
+<h1>Transactions</h1>
+
+<!-- Filters -->
+<details open>
+    <summary>Filters</summary>
+    <form method="get" action="{{ url_for('transactions') }}">
+        <div class="grid">
+            <label>
+                From
+                <input type="date" name="date_from" value="{{ filters.date_from }}">
+            </label>
+            <label>
+                To
+                <input type="date" name="date_to" value="{{ filters.date_to }}">
+            </label>
+            <label>
+                Category
+                <select name="category">
+                    <option value="">All</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {{ 'selected' if filters.category == cat else '' }}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Account
+                <select name="account">
+                    <option value="">All</option>
+                    {% for acc in accounts %}
+                    <option value="{{ acc }}" {{ 'selected' if filters.account == acc else '' }}>{{ acc }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </div>
+        <div class="grid">
+            <label>
+                Search name
+                <input type="text" name="search" value="{{ filters.search }}" placeholder="Search transaction names...">
+            </label>
+            <label>
+                <input type="checkbox" name="flagged_only" value="1" {{ 'checked' if filters.flagged_only else '' }}>
+                Flagged only
+            </label>
+            <div>
+                <button type="submit">Apply</button>
+                <a href="{{ url_for('transactions') }}" role="button" class="outline secondary">Clear</a>
+            </div>
+        </div>
+    </form>
+</details>
+
+<p><small>Showing {{ data.transactions|length }} of {{ data.total }} transactions (page {{ data.page }}/{{ data.pages }})</small></p>
+
+<!-- Transaction Table -->
+<figure>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Name</th>
+                <th style="text-align:right">Amount</th>
+                <th>Category</th>
+                <th>Budget Cat.</th>
+                <th>Account</th>
+                <th>Type</th>
+                <th>Flag</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in data.transactions %}
+            <tr class="{{ 'warning-row' if t.flagged else '' }}">
+                <td>{{ t.date }}</td>
+                <td>{{ t.name[:50] }}{{ '...' if t.name|length > 50 else '' }}</td>
+                <td style="text-align:right" class="{{ 'income-amount' if t.amount < 0 else '' }}">
+                    {{ "${:,.2f}".format(t.amount) }}
+                </td>
+                <td>{{ t.category or "—" }}</td>
+                <td>{{ t.budget_category or "—" }}</td>
+                <td>{{ t.account or "—" }}</td>
+                <td>{{ t.type or "—" }}</td>
+                <td>{{ t.flag_reason if t.flagged else "" }}</td>
+            </tr>
+            {% endfor %}
+            {% if not data.transactions %}
+            <tr><td colspan="8" style="text-align:center">No transactions found. <a href="{{ url_for('import_page') }}">Import a CSV</a> to get started.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</figure>
+
+<!-- Pagination -->
+{% if data.pages > 1 %}
+<nav>
+    <ul>
+        {% if data.page > 1 %}
+        <li><a href="?page={{ data.page - 1 }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&category={{ filters.category }}&account={{ filters.account }}&flagged_only={{ '1' if filters.flagged_only else '' }}&search={{ filters.search }}">Previous</a></li>
+        {% endif %}
+        <li>Page {{ data.page }} of {{ data.pages }}</li>
+        {% if data.page < data.pages %}
+        <li><a href="?page={{ data.page + 1 }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&category={{ filters.category }}&account={{ filters.account }}&flagged_only={{ '1' if filters.flagged_only else '' }}&search={{ filters.search }}">Next</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

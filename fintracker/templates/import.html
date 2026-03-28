@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Import — FinTracker{% endblock %}
+
+{% block content %}
+<h1>Import Transactions</h1>
+
+<article>
+    <header>Upload CSV</header>
+    <form method="post" enctype="multipart/form-data">
+        <label>
+            Select your transactions CSV file
+            <input type="file" name="csv_file" accept=".csv" required>
+        </label>
+        <small>Expects the same format as your bank export: date, name, amount, status, category, parent category, excluded, tags, type, account, account mask, note, recurring.</small>
+        <button type="submit">Import</button>
+    </form>
+</article>
+
+{% if result %}
+<article>
+    <header>Import Results</header>
+    <div class="grid">
+        <div>
+            <strong>{{ result.total }}</strong> total rows
+        </div>
+        <div>
+            <strong>{{ result.new }}</strong> new transactions
+        </div>
+        <div>
+            <strong>{{ result.skipped }}</strong> duplicates skipped
+        </div>
+        <div>
+            <strong class="{{ 'over' if result.flagged > 0 else '' }}">{{ result.flagged }}</strong> flagged
+        </div>
+    </div>
+</article>
+{% endif %}
+
+{% if batches %}
+<section>
+    <h2>Import History</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>File</th>
+                    <th style="text-align:right">Total Rows</th>
+                    <th style="text-align:right">New</th>
+                    <th style="text-align:right">Skipped</th>
+                    <th style="text-align:right">Flagged</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in batches %}
+                <tr>
+                    <td>{{ b.imported_at }}</td>
+                    <td>{{ b.filename }}</td>
+                    <td style="text-align:right">{{ b.row_count }}</td>
+                    <td style="text-align:right">{{ b.new_count }}</td>
+                    <td style="text-align:right">{{ b.skipped_count }}</td>
+                    <td style="text-align:right">{{ b.flagged_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+</section>
+{% endif %}
+{% endblock %}

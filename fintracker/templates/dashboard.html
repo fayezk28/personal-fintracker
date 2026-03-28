@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — FinTracker{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+{% if scorecard %}
+<!-- Plan Progress -->
+<section>
+    <h2>90-Day Plan Progress</h2>
+    <div class="grid">
+        <article>
+            <header>Paychecks Logged</header>
+            <p class="big-number">{{ scorecard.logged_paychecks }} / {{ scorecard.total_paychecks }}</p>
+            <progress value="{{ scorecard.pct_complete }}" max="100"></progress>
+            <small>{{ scorecard.pct_complete }}% complete</small>
+        </article>
+        <article>
+            <header>Emergency Fund</header>
+            <p class="big-number">${{ "{:,.0f}".format(scorecard.efund_current) }}</p>
+            <progress value="{{ scorecard.efund_current - scorecard.efund_start }}" max="{{ scorecard.total_efund_planned }}"></progress>
+            <small>${{ "{:,.0f}".format(scorecard.efund_current) }} / ${{ "{:,.0f}".format(scorecard.efund_target) }} target</small>
+        </article>
+        <article>
+            <header>Roth IRA (2026)</header>
+            <p class="big-number">${{ "{:,.0f}".format(scorecard.roth_deposits) }}</p>
+            <progress value="{{ scorecard.roth_deposits }}" max="{{ scorecard.roth_target }}"></progress>
+            <small>${{ "{:,.0f}".format(scorecard.roth_deposits) }} / ${{ "{:,.0f}".format(scorecard.roth_target) }} target</small>
+        </article>
+    </div>
+</section>
+
+<!-- Rent Waterfall -->
+<section>
+    <h2>Rent Checking Account Waterfall</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Event</th><th style="text-align:right">Amount</th><th style="text-align:right">Balance</th></tr>
+            </thead>
+            <tbody>
+                {% for e in waterfall %}
+                <tr class="{{ 'warning-row' if e.balance is not none and e.balance < 500 else '' }}">
+                    <td>{{ e.date }}</td>
+                    <td>{{ e.event }}</td>
+                    <td style="text-align:right">{{ "${:,.0f}".format(e.amount) if e.amount else "—" }}</td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(e.balance) }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+</section>
+{% endif %}
+
+<!-- Monthly Scorecard -->
+{% if monthly %}
+<section>
+    <h2>{{ now.strftime('%B %Y') }} Scorecard</h2>
+    <div class="grid">
+        <article>
+            <header>Spending</header>
+            <p class="big-number {{ 'over' if monthly.spending_status == 'over' else 'under' }}">
+                ${{ "{:,.0f}".format(monthly.actual_spending) }}
+            </p>
+            <small>Budget: ${{ "{:,.0f}".format(monthly.planned_spending) }}
+                {% if monthly.spending_delta >= 0 %}
+                    — ${{ "{:,.0f}".format(monthly.spending_delta) }} under
+                {% else %}
+                    — ${{ "{:,.0f}".format(-monthly.spending_delta) }} OVER
+                {% endif %}
+            </small>
+        </article>
+        <article>
+            <header>Income</header>
+            <p class="big-number">${{ "{:,.0f}".format(monthly.income) }}</p>
+            <small>{{ monthly.num_checks }} paycheck(s) this month</small>
+        </article>
+        <article>
+            <header>Flagged</header>
+            <p class="big-number {{ 'over' if monthly.flagged_count > 0 else '' }}">{{ monthly.flagged_count }}</p>
+            <small>flagged transactions</small>
+        </article>
+    </div>
+
+    {% if monthly.by_detail %}
+    <h3>Spending by Category</h3>
+    <div id="chart-container" style="max-height:350px;">
+        <canvas id="categoryChart"></canvas>
+    </div>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Category</th><th>Plan Category</th><th style="text-align:right">Amount</th><th style="text-align:right">Count</th></tr>
+            </thead>
+            <tbody>
+                {% for cat in monthly.by_detail %}
+                {% if cat.total and cat.total > 0 %}
+                <tr>
+                    <td>{{ cat.category or "—" }}</td>
+                    <td>{{ cat.budget_category or "—" }}</td>
+                    <td style="text-align:right">${{ "{:,.2f}".format(cat.total) }}</td>
+                    <td style="text-align:right">{{ cat.count }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+    {% endif %}
+</section>
+{% endif %}
+
+<!-- Flagged Transactions -->
+{% if flagged %}
+<section>
+    <h2>Flagged Transactions</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Name</th><th style="text-align:right">Amount</th><th>Reason</th></tr>
+            </thead>
+            <tbody>
+                {% for t in flagged %}
+                <tr class="warning-row">
+                    <td>{{ t.date }}</td>
+                    <td>{{ t.name }}</td>
+                    <td style="text-align:right">${{ "{:,.2f}".format(t.amount) }}</td>
+                    <td>{{ t.flag_reason }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/dashboard/data')
+        .then(r => r.json())
+        .then(data => {
+            if (data.months && data.months.length > 0) {
+                renderCategoryChart(data.months);
+            }
+        });
+});
+
+function renderCategoryChart(months) {
+    const canvas = document.getElementById('categoryChart');
+    if (!canvas) return;
+
+    // Collect all categories across months
+    const allCats = new Set();
+    months.forEach(m => Object.keys(m.categories).forEach(c => allCats.add(c)));
+
+    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'];
+    const datasets = Array.from(allCats).map((cat, i) => ({
+        label: cat,
+        data: months.map(m => (m.categories[cat] || 0).toFixed(2)),
+        backgroundColor: colors[i % colors.length],
+    }));
+
+    new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: months.map(m => m.label),
+            datasets: datasets,
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } },
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true, ticks: { callback: v => '$' + v } },
+            },
+        },
+    });
+}
+</script>
+{% endblock %}

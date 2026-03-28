@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block title %}90-Day Scorecard — FinTracker{% endblock %}
+
+{% block content %}
+<h1>90-Day Financial Recovery Plan</h1>
+<p>{{ plan.start_date }} to {{ plan.end_date }} &middot; Salary: ${{ "{:,.2f}".format(plan.gross_salary) }}/yr &middot; Raise effective {{ plan.raise_effective_date }}</p>
+
+<!-- SECTION 1: Current Snapshot -->
+<section>
+    <h2>Current Snapshot</h2>
+    <div class="grid">
+        <article>
+            <header>Plan Progress</header>
+            <p class="big-number">{{ progress.pct_complete }}%</p>
+            <progress value="{{ progress.pct_complete }}" max="100"></progress>
+            <small>{{ progress.logged_paychecks }} / {{ progress.total_paychecks }} paychecks logged</small>
+        </article>
+        <article>
+            <header>Emergency Fund</header>
+            <p class="big-number">${{ "{:,.0f}".format(progress.efund_current) }}</p>
+            <progress value="{{ progress.efund_current - progress.efund_start }}" max="{{ progress.total_efund_planned }}"></progress>
+            <small>Target: ${{ "{:,.0f}".format(progress.efund_target) }}</small>
+        </article>
+        <article>
+            <header>Roth IRA (90-day)</header>
+            <p class="big-number">${{ "{:,.0f}".format(progress.roth_deposits) }}</p>
+            <progress value="{{ progress.roth_deposits }}" max="{{ progress.roth_target }}"></progress>
+            <small>Target: ${{ "{:,.0f}".format(progress.roth_target) }}</small>
+        </article>
+    </div>
+</section>
+
+<!-- SECTION 2: Fixed Monthly Costs -->
+<section>
+    <h2>Fixed Monthly Costs</h2>
+    <p><small>Medical ($29.27), Vision ($0.64), and Roth 401K ($184.62/check at 4%) are pre-paycheck deductions. All figures below are post-deduction net take-home only.</small></p>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Expense</th><th style="text-align:right">Monthly</th><th style="text-align:right">Per Paycheck</th></tr>
+            </thead>
+            <tbody>
+                {% for fc in fixed_costs %}
+                <tr class="{{ 'highlight-row' if fc.name.startswith('Rent') else '' }}">
+                    <td>{{ fc.name }}</td>
+                    <td style="text-align:right">${{ "{:,.2f}".format(fc.amount) }}</td>
+                    <td style="text-align:right">${{ "{:,.2f}".format(fc.amount / 2) }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td><strong>Total Fixed</strong></td>
+                    <td style="text-align:right"><strong>${{ "{:,.2f}".format(fixed_costs|sum(attribute='amount')) }}</strong></td>
+                    <td style="text-align:right"><strong>${{ "{:,.2f}".format((fixed_costs|sum(attribute='amount')) / 2) }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+    <div class="callout callout-red">
+        <strong>Rent reality:</strong> $3,100/month is 51% of standard monthly net take-home ($6,060). This is well above the 30% guideline. It's the single largest constraint on this plan.
+    </div>
+</section>
+
+<!-- SECTION 3: Pay Schedule & Monthly Net -->
+<section>
+    <h2>Pay Schedule &amp; Monthly Net</h2>
+    <p><small>Salary: ${{ "{:,.2f}".format(plan.gross_salary) }}/year effective {{ plan.raise_effective_date }}. Current net: ${{ "{:,.2f}".format(plan.net_paycheck_old) }}/check. New net: ~${{ "{:,.2f}".format(plan.net_paycheck_new) }}/check.</small></p>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Month</th><th>Paychecks</th><th style="text-align:right">Net Take-Home</th><th style="text-align:right">Fixed Costs</th><th style="text-align:right">Available</th></tr>
+            </thead>
+            <tbody>
+                {% for m in months %}
+                <tr class="{{ 'bonus-row' if m.star else '' }}">
+                    <td><strong>{{ m.label }}{{ ' *' if m.star else '' }}</strong></td>
+                    <td>{{ m.num_checks }} paycheck{{ 's' if m.num_checks > 1 else '' }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(m.net) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(m.fixed) }}</td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(m.available) }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+    <p><small>* May is the 3-paycheck bonus month. The extra paycheck's rent contribution ($1,550) pre-funds July, creating breathing room.</small></p>
+</section>
+
+<!-- SECTION 4: Monthly Allocation Breakdown -->
+<section>
+    <h2>Monthly Allocation Breakdown</h2>
+    {% for m in months %}
+    <h3>{{ m.label }}{{ ' — Bonus Month *' if m.star else '' }} — ${{ "{:,.0f}".format(m.net) }} net &rarr; ${{ "{:,.0f}".format(m.available) }} available</h3>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Bucket</th><th style="text-align:right">Amount</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Spending ({{ m.num_checks }} x ${{ "{:,.0f}".format(plan.alloc_spending) }})</td><td style="text-align:right">${{ "{:,.0f}".format(m.spending) }}</td></tr>
+                <tr><td>Emergency Fund</td><td style="text-align:right">${{ "{:,.0f}".format(m.efund) }}</td></tr>
+                <tr><td>Roth IRA ({{ m.num_checks }} x ${{ "{:,.0f}".format(plan.alloc_roth_ira) }})</td><td style="text-align:right">${{ "{:,.0f}".format(m.roth) }}</td></tr>
+                {% if m.star %}
+                <tr><td>Rent pre-fund (&rarr; Checking for July)</td><td style="text-align:right">${{ "{:,.0f}".format(plan.alloc_rent) }}</td></tr>
+                {% endif %}
+                <tr><td>Buffer</td><td style="text-align:right">${{ "{:,.0f}".format(m.buffer) }}</td></tr>
+                <tr class="total-row"><td><strong>Total</strong></td><td style="text-align:right"><strong>${{ "{:,.0f}".format(m.available) }}</strong></td></tr>
+            </tbody>
+        </table>
+    </figure>
+    {% endfor %}
+
+    <div class="callout callout-amber">
+        <strong>No extra car payments this plan.</strong> At 5.94%, the car loan is low enough priority that — given the tighter budget from $3,100 rent — every discretionary dollar does more in the emergency fund or Roth IRA. Pay the scheduled $260/month only.
+    </div>
+</section>
+
+<!-- SECTION 5: Biweekly Paycheck Breakdown -->
+<section>
+    <h2>Biweekly Paycheck Breakdown</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th><th>Date</th><th style="text-align:right">Net Pay</th><th style="text-align:right">Rent&rarr;Chk</th><th style="text-align:right">Bills</th>
+                    <th style="text-align:right">Spend</th><th style="text-align:right">E-Fund</th><th style="text-align:right">Roth IRA</th><th style="text-align:right">Buffer</th><th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set ns = namespace(total_net=0, total_rent=0, total_bills=0, total_spend=0, total_efund=0, total_roth=0, total_buffer=0) %}
+                {% for pc in paychecks %}
+                {% set ns.total_net = ns.total_net + pc.net_amount %}
+                {% set ns.total_rent = ns.total_rent + pc.alloc_rent %}
+                {% set ns.total_bills = ns.total_bills + pc.alloc_bills %}
+                {% set ns.total_spend = ns.total_spend + pc.alloc_spending %}
+                {% set ns.total_efund = ns.total_efund + pc.alloc_efund %}
+                {% set ns.total_roth = ns.total_roth + pc.alloc_roth_ira %}
+                {% set ns.total_buffer = ns.total_buffer + pc.alloc_buffer %}
+                <tr class="{{ 'bonus-row' if pc.is_bonus_check else '' }} {{ 'logged-row' if pc.actual_id else '' }}">
+                    <td>{{ loop.index }}</td>
+                    <td>{{ pc.pay_date }}{{ ' *' if pc.is_bonus_check else '' }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(pc.net_amount) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_rent) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_bills) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_spending) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_efund) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_roth_ira) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(pc.alloc_buffer) }}</td>
+                    <td>
+                        {% if pc.actual_id %}
+                        <span class="badge badge-success">Logged</span>
+                        {% else %}
+                        <span class="badge badge-pending">Pending</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td colspan="2"><strong>90-Day Total</strong></td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(ns.total_net) }}</strong></td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(ns.total_rent) }}</strong></td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(ns.total_bills) }}</strong></td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(ns.total_spend) }}</strong></td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(ns.total_efund) }}</strong></td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(ns.total_roth) }}</strong></td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(ns.total_buffer) }}</strong></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <div class="callout callout-amber">
+        <strong>* May 29 bonus paycheck:</strong> Buffer fully redirected to emergency fund. E-Fund gets $576 instead of $475.<br><br>
+        <strong>Buffer rule:</strong> The $91–$101 per paycheck is your only cushion for unexpected costs. If unspent, sweep to E-Fund each Sunday.
+    </div>
+
+    <div class="callout callout-red">
+        <strong>Spending reality check:</strong> $400/paycheck = ~$800/month for groceries, dining, transport, entertainment, shopping, and personal care in NYC. This is tight. The Jan–Feb dining spend alone was $700–1,000/month — that entire category now needs to live inside $800/month alongside everything else.
+    </div>
+</section>
+
+<!-- SECTION 6: Rent Waterfall -->
+<section>
+    <h2>Rent Checking Account Waterfall</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Event</th><th style="text-align:right">Amount</th><th style="text-align:right">Balance</th></tr>
+            </thead>
+            <tbody>
+                {% for e in waterfall %}
+                <tr class="{{ 'warning-row' if e.balance is not none and e.balance < 500 else '' }}">
+                    <td>{{ e.date }}</td>
+                    <td>{{ e.event }}</td>
+                    <td style="text-align:right">{{ "${:,.0f}".format(e.amount) if e.amount else "—" }}</td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(e.balance) }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+</section>
+
+<!-- SECTION 7: Running Totals -->
+<section>
+    <h2>Running Totals</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>#</th><th>Date</th><th style="text-align:right">E-Fund Added</th><th style="text-align:right">E-Fund Balance</th><th style="text-align:right">Roth IRA YTD</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                {% for r in running %}
+                <tr class="{{ 'bonus-row' if r.get('bonus') else '' }} {{ 'logged-row' if r.get('logged') else '' }}">
+                    <td>{{ r.idx }}</td>
+                    <td>{{ r.date }}{{ ' *' if r.get('bonus') else '' }}</td>
+                    <td style="text-align:right">{{ "+${:,.0f}".format(r.added) if r.added else "—" }}</td>
+                    <td style="text-align:right"><strong>${{ "{:,.0f}".format(r.efund) }}</strong></td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(r.roth) }}</td>
+                    <td>
+                        {% if r.get('logged') %}
+                        <span class="badge badge-success">Done</span>
+                        {% elif r.idx != "—" %}
+                        <span class="badge badge-pending">Pending</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+    <p><small>If all buffers (${{ "{:,.0f}".format(progress.total_buffer_planned) }} total) are also swept to E-Fund: end-of-June balance reaches ~${{ "{:,.0f}".format(progress.efund_target + progress.total_buffer_planned) }}. Emergency fund target of $15,000 (~4 months of fixed costs) is reachable by ~December 2026.</small></p>
+</section>
+
+<!-- SECTION 8: 90-Day Scorecard -->
+<section>
+    <h2>90-Day Scorecard</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Metric</th><th style="text-align:right">April 1</th><th style="text-align:right">June 30 Target</th></tr>
+            </thead>
+            <tbody>
+                <tr class="warning-row"><td>CC debt</td><td style="text-align:right">$12,426</td><td style="text-align:right"><strong>$0</strong></td></tr>
+                <tr><td>Monthly interest paid</td><td style="text-align:right">~$200–300</td><td style="text-align:right"><strong>$0</strong></td></tr>
+                <tr><td>Student loan payments</td><td style="text-align:right">$476/mo</td><td style="text-align:right"><strong>$0</strong></td></tr>
+                <tr><td>Car loan balance</td><td style="text-align:right">$13,063</td><td style="text-align:right"><strong>~$12,475</strong></td></tr>
+                <tr class="action-row"><td>Liquid emergency fund</td><td style="text-align:right">$6,595</td><td style="text-align:right"><strong>${{ "{:,.0f}".format(progress.efund_target) }}</strong></td></tr>
+                <tr class="action-row"><td>Roth IRA contributed (90 days)</td><td style="text-align:right">$0</td><td style="text-align:right"><strong>${{ "{:,.0f}".format(progress.roth_target) }}</strong></td></tr>
+                <tr><td>Roth 401K (via payroll, ongoing)</td><td style="text-align:right">$184.62/check</td><td style="text-align:right">$184.62/check</td></tr>
+                <tr><td>Monthly net take-home (standard)</td><td style="text-align:right">$5,975</td><td style="text-align:right">$6,060</td></tr>
+                <tr><td>Monthly fixed costs</td><td style="text-align:right">${{ "{:,.0f}".format(fixed_costs|sum(attribute='amount')) }}</td><td style="text-align:right">${{ "{:,.0f}".format(fixed_costs|sum(attribute='amount')) }}</td></tr>
+                <tr><td>Monthly available after fixed (standard)</td><td style="text-align:right">unpredictable</td><td style="text-align:right"><strong>$2,490</strong></td></tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <div class="callout">
+        <strong>The single most important rule:</strong> $400/paycheck is the spending ceiling. If you hold it, you build ${{ "{:,.0f}".format(progress.total_efund_planned) }} in emergency savings and ${{ "{:,.0f}".format(progress.roth_target) }} in Roth IRA contributions over 90 days — while paying zero interest on consumer debt for the first time. If you don't hold it, the math breaks immediately at these margins.
+    </div>
+</section>
+
+<!-- SECTION 9: Debt Overview -->
+<section>
+    <h2>Debt Overview</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Debt</th><th style="text-align:right">Balance</th><th>Rate</th><th>Status</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                {% for d in debts %}
+                <tr>
+                    <td>{{ d.name }}</td>
+                    <td style="text-align:right">${{ "{:,.2f}".format(d.balance) }}</td>
+                    <td>{{ d.apr }}%</td>
+                    <td>{{ d.status }}</td>
+                    <td>{{ d.notes or "Scheduled min payment only" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+    <div class="callout callout-amber">
+        <strong>Student loans (2.75% fixed):</strong> Administrative Forbearance through Oct 31, 2028 (SAVE plan). Do not pay. Contact servicer to confirm and request refund of Jan 1 payment ($475.58).
+    </div>
+</section>
+
+<!-- SECTION 10: Action Checklist -->
+<section>
+    <h2>Action Checklist</h2>
+
+    <h3>April 1 — Before the First Paycheck</h3>
+    <ul class="checklist">
+        <li>Pay off all $12,426 in CC debt from Individual Cash Account</li>
+        <li>April rent paid from Checking account ($3,250 already there)</li>
+        <li>Contact student loan servicer — confirm forbearance active, request refund of Jan 1 payment ($475.58)</li>
+        <li>Cancel any student loan autopay immediately</li>
+        <li>Before April 15: Consider putting remaining $2,775 into Roth IRA as a 2025 contribution</li>
+    </ul>
+
+    <h3>Ongoing — Every Paycheck</h3>
+    <ul class="checklist">
+        <li>Transfer $1,550 to Checking (rent account) on payday</li>
+        <li>Move $475 (or $400 for Apr 3) to emergency fund</li>
+        <li>Contribute $269 to Roth IRA</li>
+        <li>$400 spending — that's your ceiling</li>
+        <li>Sweep unspent buffer to E-Fund every Sunday</li>
+    </ul>
+
+    <h3>Monthly Checks</h3>
+    <ul class="checklist">
+        <li>Pay every CC statement in full — no exceptions</li>
+        <li>Weekly 10-min Sunday spending check — scan transactions</li>
+        <li>Hard cap on gambling: $50/month or $0</li>
+    </ul>
+
+    <h3>June — End of Plan</h3>
+    <ul class="checklist">
+        <li>Evaluate increasing Roth 401K from 4% to 6% (costs ~$92/month, adds $2,400/year to retirement)</li>
+        <li>Set next 90-day targets</li>
+    </ul>
+</section>
+{% endblock %}

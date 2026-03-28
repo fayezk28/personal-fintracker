@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Settings — FinTracker{% endblock %}
+
+{% block content %}
+<h1>Plan Settings</h1>
+
+{% if plan %}
+<article>
+    <header>{{ plan.name }} &middot; {{ plan.start_date }} to {{ plan.end_date }}</header>
+
+    <form method="post">
+        <input type="hidden" name="action" value="update_allocations">
+
+        <h3>Income</h3>
+        <div class="grid">
+            <label>
+                Gross Salary (annual)
+                <input type="number" step="0.01" name="gross_salary" value="{{ plan.gross_salary }}" disabled>
+                <small>Edit directly in database if changed</small>
+            </label>
+            <label>
+                Net Paycheck (new rate)
+                <input type="number" step="0.01" name="net_paycheck_new" value="{{ plan.net_paycheck_new }}">
+            </label>
+        </div>
+
+        <h3>Per-Paycheck Allocations</h3>
+        <div class="grid">
+            <label>
+                Rent (to checking)
+                <input type="number" step="0.01" name="alloc_rent" value="{{ plan.alloc_rent }}">
+            </label>
+            <label>
+                Emergency Fund
+                <input type="number" step="0.01" name="alloc_efund" value="{{ plan.alloc_efund }}">
+            </label>
+            <label>
+                Roth IRA
+                <input type="number" step="0.01" name="alloc_roth_ira" value="{{ plan.alloc_roth_ira }}">
+            </label>
+            <label>
+                Spending
+                <input type="number" step="0.01" name="alloc_spending" value="{{ plan.alloc_spending }}">
+            </label>
+        </div>
+
+        <h3>Monthly</h3>
+        <div class="grid">
+            <label>
+                Monthly Rent
+                <input type="number" step="0.01" name="monthly_rent" value="{{ plan.monthly_rent }}">
+            </label>
+        </div>
+
+        <button type="submit">Save & Recalculate Paychecks</button>
+    </form>
+</article>
+
+<article>
+    <header>Fixed Monthly Costs — ${{ "{:,.2f}".format(fixed_costs|sum(attribute='amount')) }}/mo</header>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Expense</th><th style="text-align:right">Monthly</th><th style="text-align:right">Per Paycheck</th></tr>
+            </thead>
+            <tbody>
+                {% for fc in fixed_costs %}
+                <tr>
+                    <td>{{ fc.name }}</td>
+                    <td style="text-align:right">${{ "{:,.2f}".format(fc.amount) }}</td>
+                    <td style="text-align:right">${{ "{:,.2f}".format(fc.amount / 2) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+</article>
+
+<article>
+    <header>Debts</header>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Name</th><th style="text-align:right">Balance</th><th>APR</th><th style="text-align:right">Min Payment</th><th>Status</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                {% for d in debts %}
+                <tr>
+                    <td>{{ d.name }}</td>
+                    <td style="text-align:right">${{ "{:,.2f}".format(d.balance) }}</td>
+                    <td>{{ d.apr }}%</td>
+                    <td style="text-align:right">${{ "{:,.2f}".format(d.min_payment) }}</td>
+                    <td>{{ d.status }}</td>
+                    <td>{{ d.notes or "—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+</article>
+{% endif %}
+{% endblock %}
