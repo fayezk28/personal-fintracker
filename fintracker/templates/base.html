@@ -1,22 +1,27 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}FinTracker{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
-    <nav class="container-fluid">
+    <nav class="ft-nav container-fluid">
         <ul>
-            <li><strong>FinTracker</strong></li>
+            <li><span class="ft-nav-brand">FinTracker</span></li>
         </ul>
         <ul>
             <li><a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Dashboard</a></li>
             <li><a href="{{ url_for('tracker') }}" {% if request.endpoint == 'tracker' %}class="active"{% endif %}>Tracker</a></li>
             <li><a href="{{ url_for('scorecard') }}" {% if request.endpoint == 'scorecard' %}class="active"{% endif %}>90-Day Plan</a></li>
+            <li><a href="{{ url_for('forecast') }}" {% if request.endpoint == 'forecast' %}class="active"{% endif %}>Forecast</a></li>
+            <li><a href="{{ url_for('plan_adjuster') }}" {% if request.endpoint == 'plan_adjuster' %}class="active"{% endif %}>Plan Adjuster</a></li>
             <li><a href="{{ url_for('paychecks') }}" {% if request.endpoint == 'paychecks' %}class="active"{% endif %}>Paychecks</a></li>
             <li><a href="{{ url_for('transactions') }}" {% if request.endpoint == 'transactions' %}class="active"{% endif %}>Transactions</a></li>
             <li><a href="{{ url_for('import_page') }}" {% if request.endpoint == 'import_page' %}class="active"{% endif %}>Import</a></li>
@@ -36,7 +41,7 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="container">
+    <footer class="container ft-footer">
         <small>FinTracker &middot; 90-Day Recovery Plan &middot; April 1 &ndash; June 30, 2026</small>
     </footer>
 

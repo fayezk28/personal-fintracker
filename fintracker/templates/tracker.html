@@ -84,6 +84,9 @@
 <!-- All Spending Periods -->
 <section>
     <h2>Spending by Pay Period</h2>
+    <div class="chart-container">
+        <canvas id="spendingChart"></canvas>
+    </div>
     <figure>
         <table>
             <thead>
@@ -130,13 +133,18 @@
         </table>
     </figure>
     <div class="callout">
-        <strong>The rule:</strong> $400/paycheck is the spending ceiling. ~$29/day. Cook more, subway over Lyft, limit delivery orders.
+        {% set avg_days = (t.spending_periods | map(attribute='days') | sum) / (t.spending_periods | length) if t.spending_periods else 14 %}
+        {% set daily = t.spending_periods[0].budget / avg_days if t.spending_periods else 29 %}
+        <strong>The rule:</strong> ${{ "{:,.0f}".format(t.spending_periods[0].budget if t.spending_periods else 400) }}/paycheck is the spending ceiling. ~${{ "{:.0f}".format(daily) }}/day. Cook more, subway over Lyft, limit delivery orders.
     </div>
 </section>
 
 <!-- Savings Progress -->
 <section>
     <h2>Savings Progress</h2>
+    <div class="chart-container">
+        <canvas id="savingsChart"></canvas>
+    </div>
     <div class="grid">
         <article>
             <header>Emergency Fund</header>
@@ -246,6 +254,91 @@
 
 {% block scripts %}
 <script>
+const FT = {
+    text:     'rgba(255,255,255,0.7)',
+    muted:    'rgba(255,255,255,0.42)',
+    grid:     'rgba(255,255,255,0.05)',
+    green:    '#7BC9A6',
+    greenBg:  'rgba(123,201,166,0.16)',
+    red:      '#E28C8C',
+    redBg:    'rgba(226,140,140,0.14)',
+    blue:     '#8FB3E8',
+    blueBg:   'rgba(143,179,232,0.14)',
+    amber:    '#E3B57A',
+    amberBg:  'rgba(227,181,122,0.14)',
+    purple:   '#C5A3E0',
+    purpleBg: 'rgba(197,163,224,0.14)',
+};
+
+const darkScales = (opts = {}) => ({
+    x: {
+        ticks: { color: FT.muted, font: { family: 'Inter', size: 11 } },
+        grid:  { color: FT.grid },
+        border: { color: 'transparent' },
+        ...opts.x,
+    },
+    y: {
+        ticks: { color: FT.muted, font: { family: 'Inter', size: 11 }, callback: v => '$' + v.toLocaleString() },
+        grid:  { color: FT.grid },
+        border: { color: 'transparent' },
+        beginAtZero: true,
+        ...opts.y,
+    },
+    ...(opts.y2 ? {
+        y2: {
+            position: 'right',
+            ticks: { color: FT.muted, font: { family: 'Inter', size: 11 }, callback: v => '$' + v.toLocaleString() },
+            grid: { drawOnChartArea: false, color: FT.grid },
+            border: { color: 'transparent' },
+            beginAtZero: true,
+            ...opts.y2,
+        }
+    } : {}),
+});
+
+const darkPlugins = () => ({
+    legend: {
+        position: 'bottom',
+        labels: { color: FT.text, font: { family: 'Inter', size: 12 }, usePointStyle: true, pointStyleWidth: 8, boxHeight: 8 },
+    },
+    tooltip: {
+        backgroundColor: 'rgba(28,28,30,0.95)',
+        titleColor: FT.text,
+        bodyColor: FT.muted,
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        padding: 10,
+        callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: $${Number(ctx.parsed.y).toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
+        },
+    },
+});
+
+function gradientFill(context, startColor, endColor, fallback) {
+    const chart = context.chart;
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return fallback;
+    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+    gradient.addColorStop(0, startColor);
+    gradient.addColorStop(1, endColor);
+    return gradient;
+}
+
+function modernLineOptions(extra = {}) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        animation: { duration: 850, easing: 'easeOutQuart' },
+        elements: {
+            line: { borderWidth: 2.5, cubicInterpolationMode: 'monotone' },
+            point: { radius: 0, hoverRadius: 5, hitRadius: 14, borderWidth: 0 },
+        },
+        plugins: darkPlugins(),
+        ...extra,
+    };
+}
+
 document.querySelectorAll('.checklist-form').forEach(form => {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -259,5 +352,159 @@ document.querySelectorAll('.checklist-form').forEach(form => {
         });
     });
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/tracker/data')
+        .then(r => r.json())
+        .then(data => {
+            if (data.spending_periods && data.spending_periods.length > 0) {
+                renderSpendingChart(data.spending_periods);
+            }
+            if (data.savings_timeline && data.savings_timeline.length > 0) {
+                renderSavingsChart(data.savings_timeline);
+            }
+        });
+});
+
+function renderSpendingChart(periods) {
+    const canvas = document.getElementById('spendingChart');
+    if (!canvas) return;
+
+    const labels = periods.map((p, i) => `Pay ${i + 1}`);
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Budget',
+                    data: periods.map(p => p.budget),
+                    borderColor: FT.purple,
+                    backgroundColor: 'transparent',
+                    borderDash: [6, 4],
+                    spanGaps: true,
+                    tension: 0,
+                },
+                {
+                    label: 'Actual Spending',
+                    data: periods.map(p => p.actual > 0 ? p.actual : null),
+                    borderColor: FT.red,
+                    backgroundColor: (context) => gradientFill(
+                        context,
+                        'rgba(226,140,140,0.32)',
+                        'rgba(226,140,140,0.02)',
+                        FT.redBg
+                    ),
+                    pointBackgroundColor: FT.red,
+                    pointHoverBackgroundColor: '#FBE1E1',
+                    spanGaps: true,
+                    tension: 0.35,
+                    fill: true,
+                },
+                {
+                    label: 'Cumulative Budget',
+                    data: periods.map(p => p.cumulative_budget),
+                    borderColor: FT.blue,
+                    backgroundColor: 'transparent',
+                    borderDash: [4, 4],
+                    spanGaps: true,
+                    tension: 0,
+                    yAxisID: 'y2',
+                },
+                {
+                    label: 'Cumulative Actual',
+                    data: periods.map(p => p.cumulative_actual > 0 ? p.cumulative_actual : null),
+                    borderColor: FT.amber,
+                    backgroundColor: 'transparent',
+                    pointBackgroundColor: FT.amber,
+                    pointHoverBackgroundColor: '#FAEFD9',
+                    spanGaps: true,
+                    tension: 0.35,
+                    yAxisID: 'y2',
+                },
+            ],
+        },
+        options: modernLineOptions({
+            scales: darkScales({
+                x: {},
+                y: {},
+                y2: {},
+            }),
+        }),
+    });
+}
+
+function renderSavingsChart(timeline) {
+    const canvas = document.getElementById('savingsChart');
+    if (!canvas) return;
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: timeline.map(t => t.label),
+            datasets: [
+                {
+                    label: 'E-Fund (Planned)',
+                    data: timeline.map(t => t.efund_planned),
+                    borderColor: 'rgba(123,201,166,0.68)',
+                    backgroundColor: 'transparent',
+                    borderDash: [6, 4],
+                    spanGaps: true,
+                    tension: 0.15,
+                },
+                {
+                    label: 'E-Fund (Actual)',
+                    data: timeline.map(t => t.efund_actual),
+                    borderColor: FT.green,
+                    backgroundColor: (context) => gradientFill(
+                        context,
+                        'rgba(123,201,166,0.30)',
+                        'rgba(123,201,166,0.02)',
+                        FT.greenBg
+                    ),
+                    pointBackgroundColor: FT.green,
+                    pointHoverBackgroundColor: '#DFF6EA',
+                    spanGaps: true,
+                    tension: 0.3,
+                    fill: true,
+                },
+                {
+                    label: 'Roth IRA (Planned)',
+                    data: timeline.map(t => t.roth_planned),
+                    borderColor: 'rgba(143,179,232,0.68)',
+                    backgroundColor: 'transparent',
+                    borderDash: [6, 4],
+                    spanGaps: true,
+                    tension: 0.15,
+                    yAxisID: 'y2',
+                },
+                {
+                    label: 'Roth IRA (Actual)',
+                    data: timeline.map(t => t.roth_actual),
+                    borderColor: FT.blue,
+                    backgroundColor: (context) => gradientFill(
+                        context,
+                        'rgba(143,179,232,0.30)',
+                        'rgba(143,179,232,0.02)',
+                        FT.blueBg
+                    ),
+                    pointBackgroundColor: FT.blue,
+                    pointHoverBackgroundColor: '#E3EEFC',
+                    spanGaps: true,
+                    tension: 0.3,
+                    fill: true,
+                    yAxisID: 'y2',
+                },
+            ],
+        },
+        options: modernLineOptions({
+            scales: darkScales({
+                y: { beginAtZero: false },
+                y2: {},
+            }),
+        }),
+    });
+}
 </script>
 {% endblock %}

@@ -197,9 +197,209 @@ def tracker_summary(db, plan_id=1):
     }
 
 
+def tracker_chart_data(db, plan_id=1):
+    """Return JSON-serializable data for the tracker charts."""
+    spending_periods = get_spending_by_period(db, plan_id)
+
+    # Spending by period: label, budget, actual, cumulative
+    cumulative_budget = 0
+    cumulative_actual = 0
+    periods_chart = []
+    for i, sp in enumerate(spending_periods):
+        cumulative_budget += sp["budget"]
+        cumulative_actual += sp["actual"]
+        periods_chart.append({
+            "label": f"Pay {i + 1}\n{sp['start']}",
+            "budget": sp["budget"],
+            "actual": sp["actual"],
+            "cumulative_budget": cumulative_budget,
+            "cumulative_actual": cumulative_actual,
+        })
+
+    # Savings timeline: per-paycheck planned vs actual running totals
+    paychecks = get_planned_paychecks(db, plan_id)
+    efund_start = 9561
+    cumulative_efund_planned = efund_start
+    cumulative_efund_actual = efund_start
+    cumulative_roth_planned = 0
+    cumulative_roth_actual = 0
+
+    savings_timeline = [
+        {
+            "label": "Apr 1 (start)",
+            "efund_planned": efund_start,
+            "efund_actual": efund_start,
+            "roth_planned": 0,
+            "roth_actual": 0,
+        }
+    ]
+    for pc in paychecks:
+        cumulative_efund_planned += pc["alloc_efund"]
+        cumulative_roth_planned += pc["alloc_roth_ira"]
+        if pc.get("actual_id"):
+            if pc.get("efund_done"):
+                cumulative_efund_actual += pc["alloc_efund"]
+            if pc.get("roth_done"):
+                cumulative_roth_actual += pc["alloc_roth_ira"]
+        savings_timeline.append({
+            "label": pc["pay_date"],
+            "efund_planned": cumulative_efund_planned,
+            "efund_actual": cumulative_efund_actual,
+            "roth_planned": cumulative_roth_planned,
+            "roth_actual": cumulative_roth_actual,
+        })
+
+    return {
+        "spending_periods": periods_chart,
+        "savings_timeline": savings_timeline,
+    }
+
+
+def end_of_year_forecast(db, year=None):
+    """Project end-of-year totals based on actual weekly pace."""
+    today = datetime.now().date()
+    target_year = year or today.year
+    year_start = datetime(target_year, 1, 1).date()
+    year_end = datetime(target_year, 12, 31).date()
+    cutoff = min(today, year_end)
+
+    tx_rows = db.execute(
+        """SELECT date, amount, type, excluded
+           FROM transactions
+           WHERE date >= ? AND date <= ?
+           ORDER BY date""",
+        (year_start.strftime("%Y-%m-%d"), cutoff.strftime("%Y-%m-%d")),
+    ).fetchall()
+
+    income_actual = 0.0
+    spending_actual = 0.0
+    weekly = {}
+
+    for row in tx_rows:
+        dt = datetime.strptime(row["date"], "%Y-%m-%d").date()
+        week_key = f"{dt.isocalendar().year}-W{dt.isocalendar().week:02d}"
+        if week_key not in weekly:
+            weekly[week_key] = {"income": 0.0, "spending": 0.0}
+
+        if row["type"] == "income":
+            amount = abs(float(row["amount"] or 0))
+            income_actual += amount
+            weekly[week_key]["income"] += amount
+        elif row["type"] == "regular" and str(row["excluded"]).lower() == "false" and float(row["amount"] or 0) > 0:
+            amount = float(row["amount"])
+            spending_actual += amount
+            weekly[week_key]["spending"] += amount
+
+    week_labels = sorted(weekly.keys())
+    weeks_elapsed = max(1, len(week_labels))
+    weeks_total = datetime(target_year, 12, 28).isocalendar().week
+    weeks_remaining = max(0, weeks_total - weeks_elapsed)
+
+    income_weekly_avg = income_actual / weeks_elapsed
+    spending_weekly_avg = spending_actual / weeks_elapsed
+
+    income_projected = income_actual + (income_weekly_avg * weeks_remaining)
+    spending_projected = spending_actual + (spending_weekly_avg * weeks_remaining)
+
+    weekly_points = [
+        {
+            "week": wk,
+            "income": round(weekly[wk]["income"], 2),
+            "spending": round(weekly[wk]["spending"], 2),
+        }
+        for wk in week_labels
+    ]
+
+    return {
+        "year": target_year,
+        "as_of": cutoff.strftime("%Y-%m-%d"),
+        "weeks_elapsed": weeks_elapsed,
+        "weeks_total": weeks_total,
+        "weeks_remaining": weeks_remaining,
+        "income_actual": round(income_actual, 2),
+        "spending_actual": round(spending_actual, 2),
+        "net_actual": round(income_actual - spending_actual, 2),
+        "income_weekly_avg": round(income_weekly_avg, 2),
+        "spending_weekly_avg": round(spending_weekly_avg, 2),
+        "income_projected": round(income_projected, 2),
+        "spending_projected": round(spending_projected, 2),
+        "net_projected": round(income_projected - spending_projected, 2),
+        "weekly_points": weekly_points,
+    }
+
+
+def trip_scenario_plan(db, trip_cost, trip_date, contingency_pct=10, plan_id=1):
+    """Model allocation adjustments needed to fund a one-time upcoming trip."""
+    plan = get_plan(db, plan_id)
+    paychecks = get_planned_paychecks(db, plan_id)
+    today = datetime.now().date()
+    trip_dt = datetime.strptime(trip_date, "%Y-%m-%d").date()
+
+    total_trip = trip_cost * (1 + (contingency_pct / 100.0))
+    eligible = [
+        p for p in paychecks
+        if today <= datetime.strptime(p["pay_date"], "%Y-%m-%d").date() <= trip_dt
+    ]
+    checks_count = len(eligible)
+    per_check = (total_trip / checks_count) if checks_count else total_trip
+
+    strategies = []
+
+    def build_strategy(key, label, from_buffer=0.0, from_spending=0.0, from_efund=0.0):
+        new_buffer = plan["alloc_buffer"] - from_buffer
+        new_spending = plan["alloc_spending"] - from_spending
+        new_efund = plan["alloc_efund"] - from_efund
+        feasible = new_buffer >= 0 and new_spending >= 0 and new_efund >= 0
+        risk = "Low" if feasible and new_buffer >= 50 else ("Medium" if feasible else "High")
+        strategies.append({
+            "key": key,
+            "label": label,
+            "feasible": feasible,
+            "risk": risk,
+            "from_buffer": round(from_buffer, 2),
+            "from_spending": round(from_spending, 2),
+            "from_efund": round(from_efund, 2),
+            "new_buffer": round(new_buffer, 2),
+            "new_spending": round(new_spending, 2),
+            "new_efund": round(new_efund, 2),
+        })
+
+    build_strategy("buffer_only", "Buffer only", from_buffer=per_check)
+    build_strategy("spending_only", "Spending only", from_spending=per_check)
+    build_strategy(
+        "balanced",
+        "Balanced (60% buffer / 40% spending)",
+        from_buffer=per_check * 0.6,
+        from_spending=per_check * 0.4,
+    )
+    build_strategy(
+        "protect_cashflow",
+        "Protect cashflow (50% e-fund / 50% buffer)",
+        from_buffer=per_check * 0.5,
+        from_efund=per_check * 0.5,
+    )
+
+    return {
+        "trip_cost": round(trip_cost, 2),
+        "contingency_pct": contingency_pct,
+        "trip_total": round(total_trip, 2),
+        "trip_date": trip_date,
+        "checks_count": checks_count,
+        "per_check": round(per_check, 2),
+        "eligible_checks": [
+            {
+                "date": p["pay_date"],
+                "net_amount": p["net_amount"],
+                "is_bonus": bool(p["is_bonus_check"]),
+            }
+            for p in eligible
+        ],
+        "strategies": strategies,
+    }
+
+
 def dashboard_chart_data(db, plan_id=1):
     """Return JSON-serializable data for Chart.js on the dashboard."""
-    from datetime import datetime
     today = datetime.now()
 
     # Last 3 months of spending by category
@@ -224,20 +424,4 @@ def dashboard_chart_data(db, plan_id=1):
             "income": summary["income"],
         })
 
-    # Plan progress for gauges
-    scorecard = plan_scorecard(db, plan_id)
-
-    return {
-        "months": months,
-        "scorecard": {
-            "efund_pct": scorecard["efund_pct"],
-            "roth_pct": scorecard["roth_pct"],
-            "pct_complete": scorecard["pct_complete"],
-            "efund_current": scorecard["efund_current"],
-            "efund_target": scorecard["efund_target"],
-            "roth_deposits": scorecard["roth_deposits"],
-            "roth_target": scorecard["roth_target"],
-            "logged": scorecard["logged_paychecks"],
-            "total": scorecard["total_paychecks"],
-        },
-    }
+    return {"months": months}

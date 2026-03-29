@@ -426,20 +426,20 @@ def recalculate_paychecks(db, plan_id=1):
     ).fetchall()
 
     for pc in paychecks:
-        is_first = pc["pay_date"] == "2026-04-03"
-        net = plan["net_paycheck_old"] if is_first else plan["net_paycheck_new"]
+        net = plan["net_paycheck_new"]
         rent = plan["alloc_rent"]
         bills = (sum(fc["amount"] for fc in get_fixed_costs(db, plan_id)) - plan["monthly_rent"]) / 2
         roth = plan["alloc_roth_ira"]
         spending = plan["alloc_spending"]
 
         if pc["is_bonus_check"]:
-            efund = net - rent - bills - roth - spending
+            # No rent allocation — June 12 + June 26 pre-fund July rent.
+            # Full remainder goes to e-fund.
+            rent = 0
+            efund = net - bills - roth - spending
             buffer = 0
         else:
             efund = plan["alloc_efund"]
-            if is_first:
-                efund = max(0, efund - (plan["net_paycheck_new"] - plan["net_paycheck_old"]))
             buffer = net - rent - bills - efund - roth - spending
 
         db.execute(

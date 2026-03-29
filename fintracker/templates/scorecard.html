@@ -63,7 +63,7 @@
 <!-- SECTION 3: Pay Schedule & Monthly Net -->
 <section>
     <h2>Pay Schedule &amp; Monthly Net</h2>
-    <p><small>Salary: ${{ "{:,.2f}".format(plan.gross_salary) }}/year effective {{ plan.raise_effective_date }}. Current net: ${{ "{:,.2f}".format(plan.net_paycheck_old) }}/check. New net: ~${{ "{:,.2f}".format(plan.net_paycheck_new) }}/check.</small></p>
+    <p><small>Salary: ${{ "{:,.2f}".format(plan.gross_salary) }}/year &mdash; raise effective {{ plan.raise_effective_date }}. Net take-home: ~${{ "{:,.2f}".format(plan.net_paycheck_new) }}/check.</small></p>
     <figure>
         <table>
             <thead>

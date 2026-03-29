@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Plan Adjuster — FinTracker{% endblock %}
+
+{% block content %}
+<h1>Plan Adjuster</h1>
+
+<section>
+    <article>
+        <header>Scenario Inputs</header>
+        <form method="post">
+            <div class="grid">
+                <label>
+                    Trip cost
+                    <span class="help-tip" title="Estimated base amount for the trip before adding any safety buffer.">i</span>
+                    <input type="number" step="0.01" min="0" name="trip_cost" value="{{ scenario.trip_cost }}" required>
+                    <small class="field-help">Base trip estimate before contingency.</small>
+                </label>
+                <label>
+                    Trip date
+                    <span class="help-tip" title="Target payment date for the trip. The app spreads funding across paychecks before this date.">i</span>
+                    <input type="date" name="trip_date" value="{{ scenario.trip_date }}" required>
+                    <small class="field-help">Funding is spread across paychecks before this date.</small>
+                </label>
+                <label>
+                    Contingency (%)
+                    <span class="help-tip" title="Extra cushion added to trip cost for unexpected expenses (for example 10%).">i</span>
+                    <input type="number" min="0" max="100" name="contingency_pct" value="{{ scenario.contingency_pct }}" required>
+                    <small class="field-help">Safety buffer for surprises (for example: 10%).</small>
+                </label>
+            </div>
+            <button type="submit">Recalculate Plan Impact</button>
+        </form>
+    </article>
+</section>
+
+<section>
+    <div class="grid">
+        <article>
+            <header>Trip Total (with contingency)</header>
+            <span class="help-tip" title="Total target to fund: trip cost plus contingency buffer.">i</span>
+            <p class="big-number">${{ "{:,.0f}".format(scenario.trip_total) }}</p>
+            <small>Base: ${{ "{:,.0f}".format(scenario.trip_cost) }} + {{ scenario.contingency_pct }}%</small>
+        </article>
+        <article>
+            <header>Paychecks Before Trip</header>
+            <span class="help-tip" title="Count of planned paychecks between today and the selected trip date.">i</span>
+            <p class="big-number">{{ scenario.checks_count }}</p>
+            <small>Used for spread calculation</small>
+        </article>
+        <article>
+            <header>Required Per Check</header>
+            <span class="help-tip" title="Amount that needs to be reallocated from each eligible paycheck to hit the trip total.">i</span>
+            <p class="big-number">${{ "{:,.0f}".format(scenario.per_check) }}</p>
+            <small>Amount to reallocate each paycheck</small>
+        </article>
+    </div>
+</section>
+
+<section>
+    <h2>Eligible Paychecks</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr><th>Date</th><th style="text-align:right">Net</th><th>Type</th></tr>
+            </thead>
+            <tbody>
+                {% for p in scenario.eligible_checks %}
+                <tr class="{{ 'bonus-row' if p.is_bonus else '' }}">
+                    <td>{{ p.date }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(p.net_amount) }}</td>
+                    <td>{{ "Bonus check" if p.is_bonus else "Regular" }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3">No upcoming checks before the selected trip date.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+</section>
+
+<section>
+    <h2>Strategy Comparison</h2>
+    <figure>
+        <table>
+            <thead>
+                <tr>
+                    <th>Strategy</th>
+                    <th style="text-align:right">From Buffer</th>
+                    <th style="text-align:right">From Spending</th>
+                    <th style="text-align:right">From E-Fund</th>
+                    <th style="text-align:right">New Buffer</th>
+                    <th style="text-align:right">New Spending</th>
+                    <th style="text-align:right">New E-Fund</th>
+                    <th>Risk <span class="help-tip" title="Low means feasible with minimal strain, Medium means tighter allocations, High means one or more allocations go negative.">i</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in scenario.strategies %}
+                <tr class="{{ 'warning-row' if not s.feasible else '' }}">
+                    <td>{{ s.label }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(s.from_buffer) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(s.from_spending) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(s.from_efund) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(s.new_buffer) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(s.new_spending) }}</td>
+                    <td style="text-align:right">${{ "{:,.0f}".format(s.new_efund) }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-over' if s.risk == 'High' else ('badge-warning' if s.risk == 'Medium' else 'badge-success') }}">
+                            {{ s.risk }}
+                        </span>
+                        {% if not s.feasible %}
+                        <br><small>Exceeds current allocation.</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </figure>
+</section>
+{% endblock %}

@@ -120,9 +120,14 @@
         </article>
     </div>
 
+    <h3>Income vs Spending — Last 3 Months</h3>
+    <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+    </div>
+
     {% if monthly.by_detail %}
     <h3>Spending by Category</h3>
-    <div id="chart-container" style="max-height:350px;">
+    <div class="chart-container">
         <canvas id="categoryChart"></canvas>
     </div>
     <figure>
@@ -175,45 +180,173 @@
 
 {% block scripts %}
 <script>
+const FT = {
+    text:     'rgba(255,255,255,0.7)',
+    muted:    'rgba(255,255,255,0.42)',
+    grid:     'rgba(255,255,255,0.05)',
+    green:    '#7BC9A6',
+    greenBg:  'rgba(123,201,166,0.16)',
+    red:      '#E28C8C',
+    redBg:    'rgba(226,140,140,0.14)',
+    blue:     '#8FB3E8',
+    blueBg:   'rgba(143,179,232,0.14)',
+    amber:    '#E3B57A',
+    purple:   '#C5A3E0',
+    purpleBg: 'rgba(197,163,224,0.14)',
+};
+
+const darkScales = (opts = {}) => ({
+    x: {
+        ticks: { color: FT.muted, font: { family: 'Inter', size: 11 } },
+        grid:  { color: FT.grid },
+        border: { color: 'transparent' },
+        ...opts.x,
+    },
+    y: {
+        ticks: { color: FT.muted, font: { family: 'Inter', size: 11 }, callback: v => '$' + v.toLocaleString() },
+        grid:  { color: FT.grid },
+        border: { color: 'transparent' },
+        beginAtZero: true,
+        ...opts.y,
+    },
+    ...(opts.y2 ? {
+        y2: {
+            position: 'right',
+            ticks: { color: FT.muted, font: { family: 'Inter', size: 11 }, callback: v => '$' + v.toLocaleString() },
+            grid: { drawOnChartArea: false },
+            border: { color: 'transparent' },
+            beginAtZero: true,
+            ...opts.y2,
+        }
+    } : {}),
+});
+
+const darkPlugins = (extra = {}) => ({
+    legend: {
+        position: 'bottom',
+        labels: { color: FT.text, font: { family: 'Inter', size: 12 }, usePointStyle: true, pointStyleWidth: 8, boxHeight: 8 },
+    },
+    tooltip: {
+        backgroundColor: 'rgba(28,28,30,0.95)',
+        titleColor: FT.text,
+        bodyColor: FT.muted,
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        padding: 10,
+        callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: $${Number(ctx.parsed.y).toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
+        },
+    },
+    ...extra,
+});
+
+function gradientFill(context, startColor, endColor, fallback) {
+    const chart = context.chart;
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return fallback;
+    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+    gradient.addColorStop(0, startColor);
+    gradient.addColorStop(1, endColor);
+    return gradient;
+}
+
+function modernLineOptions(extra = {}) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        animation: { duration: 850, easing: 'easeOutQuart' },
+        elements: {
+            line: { borderWidth: 2.5, cubicInterpolationMode: 'monotone' },
+            point: { radius: 0, hoverRadius: 5, hitRadius: 14, borderWidth: 0 },
+        },
+        plugins: darkPlugins(),
+        scales: darkScales(),
+        ...extra,
+    };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     fetch('/dashboard/data')
         .then(r => r.json())
         .then(data => {
             if (data.months && data.months.length > 0) {
+                renderTrendChart(data.months);
                 renderCategoryChart(data.months);
             }
         });
 });
 
+function renderTrendChart(months) {
+    const canvas = document.getElementById('trendChart');
+    if (!canvas) return;
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: months.map(m => m.label),
+            datasets: [
+                {
+                    label: 'Income',
+                    data: months.map(m => m.income.toFixed(2)),
+                    borderColor: FT.green,
+                    backgroundColor: (context) => gradientFill(
+                        context,
+                        'rgba(123,201,166,0.34)',
+                        'rgba(123,201,166,0.02)',
+                        FT.greenBg
+                    ),
+                    pointBackgroundColor: FT.green,
+                    pointHoverBackgroundColor: '#DFF6EA',
+                    spanGaps: true,
+                    tension: 0.38,
+                    fill: true,
+                },
+                {
+                    label: 'Spending',
+                    data: months.map(m => m.total_spending.toFixed(2)),
+                    borderColor: FT.red,
+                    backgroundColor: (context) => gradientFill(
+                        context,
+                        'rgba(226,140,140,0.30)',
+                        'rgba(226,140,140,0.02)',
+                        FT.redBg
+                    ),
+                    pointBackgroundColor: FT.red,
+                    pointHoverBackgroundColor: '#FBE1E1',
+                    spanGaps: true,
+                    tension: 0.38,
+                    fill: true,
+                },
+            ],
+        },
+        options: modernLineOptions(),
+    });
+}
+
 function renderCategoryChart(months) {
     const canvas = document.getElementById('categoryChart');
     if (!canvas) return;
 
-    // Collect all categories across months
     const allCats = new Set();
     months.forEach(m => Object.keys(m.categories).forEach(c => allCats.add(c)));
 
-    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'];
+    const colors = [FT.blue, FT.purple, FT.green, FT.amber, FT.red, '#9CB8D8', '#CDB6DE', '#A3C8B7'];
     const datasets = Array.from(allCats).map((cat, i) => ({
         label: cat,
         data: months.map(m => (m.categories[cat] || 0).toFixed(2)),
         backgroundColor: colors[i % colors.length],
+        borderRadius: 4,
     }));
 
     new Chart(canvas, {
         type: 'bar',
-        data: {
-            labels: months.map(m => m.label),
-            datasets: datasets,
-        },
+        data: { labels: months.map(m => m.label), datasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom' } },
-            scales: {
-                x: { stacked: true },
-                y: { stacked: true, beginAtZero: true, ticks: { callback: v => '$' + v } },
-            },
+            plugins: darkPlugins(),
+            scales: darkScales({ x: { stacked: true }, y: { stacked: true } }),
         },
     });
 }

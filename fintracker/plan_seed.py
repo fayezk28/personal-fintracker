@@ -20,9 +20,9 @@ def seed(db):
             "2026-04-01",
             "2026-06-30",
             123935.40,
-            2945.47,
             3030.00,
-            "2026-04-07",
+            3030.00,
+            "2026-04-03",
             "biweekly",
             1550.00,
             475.00,
@@ -81,16 +81,16 @@ def seed(db):
             (plan_id, name, balance, apr, min_pay, maturity, status, notes),
         )
 
-    # 7 planned paychecks: Apr 3 (old rate), Apr 17-Jun 26 (new rate)
+    # 7 planned paychecks: all at new rate (raise effective Apr 3)
     # Per-paycheck bills = (total fixed - rent) / 2 = (3570.18 - 3100) / 2 = 235.09
     bills_per_check = 235.09
     paychecks = [
         # (date, net, rent, bills, efund, roth, spending, buffer, is_bonus, notes)
-        ("2026-04-03", 2945.47, 1550, bills_per_check, 400, 269, 400, 91.38, 0, "Last check at old $120K rate"),
-        ("2026-04-17", 3030.00, 1550, bills_per_check, 475, 269, 400, 100.91, 0, "First check at new rate"),
+        ("2026-04-03", 3030.00, 1550, bills_per_check, 475, 269, 400, 100.91, 0, "First check at new rate (raise effective Apr 3)"),
+        ("2026-04-17", 3030.00, 1550, bills_per_check, 475, 269, 400, 100.91, 0, None),
         ("2026-05-01", 3030.00, 1550, bills_per_check, 475, 269, 400, 100.91, 0, None),
         ("2026-05-15", 3030.00, 1550, bills_per_check, 475, 269, 400, 100.91, 0, None),
-        ("2026-05-29", 3030.00, 1550, bills_per_check, 576, 269, 400, 0, 1, "Bonus 3rd paycheck — buffer redirected to E-Fund"),
+        ("2026-05-29", 3030.00, 0, bills_per_check, 2126, 269, 400, 0, 1, "Bonus 3rd paycheck — no rent needed, full amount to E-Fund (Jun 12+26 cover July rent)"),
         ("2026-06-12", 3030.00, 1550, bills_per_check, 475, 269, 400, 100.91, 0, None),
         ("2026-06-26", 3030.00, 1550, bills_per_check, 475, 269, 400, 100.91, 0, None),
     ]
@@ -184,7 +184,7 @@ def seed(db):
         ("April 1 — Day One", "Before April 15: Put remaining $3,780 into Roth IRA as 2025 contribution", 5, "2026-04-15"),
 
         # Phase 2: April setup
-        ("April — Setup", "Verify Apr 17 paycheck reflects the raise", 10, "2026-04-17"),
+        ("April — Setup", "Verify Apr 3 paycheck reflects the raise (new rate effective Apr 3)", 10, "2026-04-03"),
         ("April — Setup", "Set up $1,550 auto-transfer to Checking each payday for rent funding", 11, "2026-04-03"),
         ("April — Setup", "Set up automatic $269/paycheck to Roth IRA", 12, "2026-04-03"),
         ("April — Setup", "Pull March pay stubs — identify what caused $1,329/$1,346 amounts", 13, "2026-04-07"),
@@ -203,8 +203,7 @@ def seed(db):
         ("Monthly Checks", "Confirm W-4 withholding is accurate on new salary", 33, "2026-05-15"),
 
         # Phase 5: May bonus month
-        ("May — Bonus Month", "May 29 bonus paycheck — full buffer redirected to E-Fund", 40, "2026-05-29"),
-        ("May — Bonus Month", "3rd paycheck rent allocation ($1,550) pre-funds July", 41, "2026-05-29"),
+        ("May — Bonus Month", "May 29 bonus paycheck — no rent allotment needed (Jun 12+26 cover July rent); full remainder to E-Fund", 40, "2026-05-29"),
 
         # Phase 6: June — End of Plan
         ("June — End of Plan", "Evaluate increasing Roth 401K from 4% to 6%", 50, "2026-06-30"),

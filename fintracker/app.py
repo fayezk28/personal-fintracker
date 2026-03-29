@@ -95,6 +95,13 @@ def tracker():
     return render_template("tracker.html", t=data)
 
 
+@app.route("/tracker/data")
+def tracker_data():
+    db = get_db()
+    data = budget_engine.tracker_chart_data(db)
+    return jsonify(data)
+
+
 @app.route("/tracker/checklist", methods=["POST"])
 def toggle_checklist():
     db = get_db()
@@ -104,6 +111,39 @@ def toggle_checklist():
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return jsonify({"ok": True})
     return redirect(url_for("tracker"))
+
+
+# ---------------------------------------------------------------------------
+# Routes — Forecast + Plan Adjuster
+# ---------------------------------------------------------------------------
+
+@app.route("/forecast")
+def forecast():
+    db = get_db()
+    year = int(request.args.get("year", datetime.now().year))
+    data = budget_engine.end_of_year_forecast(db, year=year)
+    return render_template("forecast.html", f=data)
+
+
+@app.route("/plan-adjuster", methods=["GET", "POST"])
+def plan_adjuster():
+    db = get_db()
+    trip_cost = 1500.0
+    contingency_pct = 10
+    trip_date = datetime.now().strftime("%Y-%m-%d")
+
+    if request.method == "POST":
+        trip_cost = float(request.form.get("trip_cost", trip_cost) or 0)
+        contingency_pct = int(request.form.get("contingency_pct", contingency_pct) or 0)
+        trip_date = request.form.get("trip_date", trip_date)
+
+    scenario = budget_engine.trip_scenario_plan(
+        db,
+        trip_cost=trip_cost,
+        trip_date=trip_date,
+        contingency_pct=contingency_pct,
+    )
+    return render_template("plan_adjuster.html", scenario=scenario)
 
 
 # ---------------------------------------------------------------------------
