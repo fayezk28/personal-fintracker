@@ -4,7 +4,7 @@ import os
 import sqlite3
 from datetime import datetime
 
-from flask import Flask, g, render_template, request, redirect, url_for, jsonify, flash
+from flask import Flask, g, render_template, request, redirect, url_for, jsonify, flash, send_file
 
 import models
 import import_csv
@@ -14,6 +14,7 @@ import plan_seed
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "finance.db")
 SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
+FINANCIAL_PLAN_HTML_PATH = os.path.join(os.path.dirname(BASE_DIR), "financial_plan.html")
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -144,6 +145,16 @@ def plan_adjuster():
         contingency_pct=contingency_pct,
     )
     return render_template("plan_adjuster.html", scenario=scenario)
+
+
+@app.route("/financial-plan")
+def financial_plan():
+    return render_template("financial_plan_page.html")
+
+
+@app.route("/financial-plan/raw")
+def financial_plan_raw():
+    return send_file(FINANCIAL_PLAN_HTML_PATH, mimetype="text/html")
 
 
 # ---------------------------------------------------------------------------

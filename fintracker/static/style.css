@@ -548,3 +548,170 @@ details summary .badge { margin-left: auto; }
     color: var(--text-muted);
     font-size: 0.72rem;
 }
+
+.doc-frame {
+    width: 100%;
+    min-height: 78vh;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+/* ─── Financial plan document page ───────────────────────── */
+.plan-doc {
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 2rem;
+    border-radius: 14px;
+    border: 1px solid #ddd;
+}
+
+.plan-doc,
+.plan-doc p,
+.plan-doc li,
+.plan-doc small,
+.plan-doc strong,
+.plan-doc em,
+.plan-doc span,
+.plan-doc a,
+.plan-doc td,
+.plan-doc th,
+.plan-doc div {
+    color: #1a1a1a;
+}
+
+.plan-doc a:hover {
+    color: #1a1a1a;
+}
+
+.plan-doc .header {
+    border-bottom: 3px solid #1a1a1a;
+    padding-bottom: 16px;
+    margin-bottom: 28px;
+}
+
+.plan-doc .header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.plan-doc .header .subtitle {
+    font-size: 13px;
+    color: #555;
+    margin-top: 4px;
+}
+
+.plan-doc h2 {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #fff;
+    background: #1a1a1a;
+    padding: 6px 10px;
+    margin: 24px 0 12px;
+}
+
+.plan-doc h3 {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 18px 0 8px;
+    color: #1a1a1a;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 4px;
+}
+
+.plan-doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    font-size: 12.5px;
+    background: #fff;
+}
+
+.plan-doc th {
+    background: #f0f0f0;
+    font-weight: 600;
+    text-align: left;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: #1a1a1a;
+}
+
+.plan-doc td {
+    padding: 5px 10px;
+    border: 1px solid #e0e0e0;
+    vertical-align: top;
+    color: #1a1a1a;
+    background: #fff;
+}
+
+.plan-doc tbody tr td { background: #fff; }
+.plan-doc tr:nth-child(even) td { background: #fafafa; }
+.plan-doc tr.total td { font-weight: 700; background: #f0f0f0; border-top: 2px solid #999; }
+.plan-doc tr.highlight td { background: #fff8e1; }
+.plan-doc tr.action td { background: #e8f5e9; }
+.plan-doc tr.warning td { background: #fce4ec; }
+
+.plan-doc .callout {
+    border-left: 4px solid #1a1a1a;
+    background: #f7f7f7;
+    color: #1a1a1a;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 12.5px;
+}
+
+.plan-doc .callout.green { border-color: #2e7d32; background: #e8f5e9; }
+.plan-doc .callout.amber { border-color: #e65100; background: #fff3e0; }
+.plan-doc .callout.red { border-color: #c62828; background: #fce4ec; }
+
+.plan-doc .checklist {
+    list-style: none;
+    margin: 8px 0 14px;
+    padding: 0;
+}
+
+.plan-doc .checklist li {
+    padding: 4px 0 4px 22px;
+    position: relative;
+    font-size: 12.5px;
+    border-bottom: 1px dotted #eee;
+    color: #1a1a1a;
+}
+
+.plan-doc .checklist li::before {
+    content: "\2610";
+    position: absolute;
+    left: 0;
+    font-size: 13px;
+    color: #555;
+}
+
+.plan-doc .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px; }
+.plan-doc .snapshot-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.plan-doc .snapshot-box { border: 1px solid #ddd; padding: 10px 12px; border-radius: 4px; }
+.plan-doc .snapshot-box .label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #777; margin-bottom: 3px; }
+.plan-doc .snapshot-box .value { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+.plan-doc .snapshot-box .value.green { color: #2e7d32; }
+.plan-doc .snapshot-box .value.red { color: #c62828; }
+
+.plan-doc .paycheck-table th, .plan-doc .paycheck-table td { text-align: right; font-size: 11.5px; }
+.plan-doc .paycheck-table th:first-child, .plan-doc .paycheck-table td:first-child,
+.plan-doc .paycheck-table th:nth-child(2), .plan-doc .paycheck-table td:nth-child(2) { text-align: left; }
+.plan-doc .paycheck-table tr.bonus-row td { background: #fff8e1; font-weight: 600; }
+
+.plan-doc .running-table th, .plan-doc .running-table td { text-align: right; }
+.plan-doc .running-table th:first-child, .plan-doc .running-table td:first-child,
+.plan-doc .running-table th:nth-child(2), .plan-doc .running-table td:nth-child(2) { text-align: left; }
+.plan-doc .running-table td.milestone { font-weight: 700; color: #2e7d32; }
+
+.plan-doc .scorecard td:last-child { font-weight: 700; color: #2e7d32; }
+.plan-doc .note { font-size: 11.5px; color: #555; margin: 6px 0 10px; font-style: italic; }
+.plan-doc .footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #ddd; font-size: 11px; color: #888; text-align: center; }

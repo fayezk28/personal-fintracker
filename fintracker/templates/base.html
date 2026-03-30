@@ -22,6 +22,7 @@
             <li><a href="{{ url_for('scorecard') }}" {% if request.endpoint == 'scorecard' %}class="active"{% endif %}>90-Day Plan</a></li>
             <li><a href="{{ url_for('forecast') }}" {% if request.endpoint == 'forecast' %}class="active"{% endif %}>Forecast</a></li>
             <li><a href="{{ url_for('plan_adjuster') }}" {% if request.endpoint == 'plan_adjuster' %}class="active"{% endif %}>Plan Adjuster</a></li>
+            <li><a href="{{ url_for('financial_plan') }}" {% if request.endpoint in ['financial_plan', 'financial_plan_raw'] %}class="active"{% endif %}>Financial Plan</a></li>
             <li><a href="{{ url_for('paychecks') }}" {% if request.endpoint == 'paychecks' %}class="active"{% endif %}>Paychecks</a></li>
             <li><a href="{{ url_for('transactions') }}" {% if request.endpoint == 'transactions' %}class="active"{% endif %}>Transactions</a></li>
             <li><a href="{{ url_for('import_page') }}" {% if request.endpoint == 'import_page' %}class="active"{% endif %}>Import</a></li>

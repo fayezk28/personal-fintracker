@@ -61,7 +61,7 @@
             </div>
             <div>
                 <strong>${{ "{:,.0f}".format(t.current_period.budget) }}</strong> budget
-                <br><small>${{ "{:,.0f}".format(t.current_period.budget / t.current_period.days) }}/day target</small>
+                <br><small>${{ "{:,.0f}".format(t.current_period.budget / t.current_period.days * 7) }}/week target</small>
             </div>
             <div>
                 {% if t.current_period.delta >= 0 %}
@@ -134,8 +134,8 @@
     </figure>
     <div class="callout">
         {% set avg_days = (t.spending_periods | map(attribute='days') | sum) / (t.spending_periods | length) if t.spending_periods else 14 %}
-        {% set daily = t.spending_periods[0].budget / avg_days if t.spending_periods else 29 %}
-        <strong>The rule:</strong> ${{ "{:,.0f}".format(t.spending_periods[0].budget if t.spending_periods else 400) }}/paycheck is the spending ceiling. ~${{ "{:.0f}".format(daily) }}/day. Cook more, subway over Lyft, limit delivery orders.
+        {% set weekly = t.spending_periods[0].budget / avg_days * 7 if t.spending_periods else 200 %}
+        <strong>The rule:</strong> ${{ "{:,.0f}".format(t.spending_periods[0].budget if t.spending_periods else 400) }}/paycheck is the spending ceiling. ~${{ "{:.0f}".format(weekly) }}/week. Cook more, subway over Lyft, limit delivery orders.
     </div>
 </section>
 
